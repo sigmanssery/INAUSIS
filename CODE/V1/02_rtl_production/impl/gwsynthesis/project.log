@@ -1,0 +1,59 @@
+GowinSynthesis start
+Running parser ...
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\crc16_ccitt.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_enc.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_tx.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_rx.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dog_fir_multi.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\frame_packer.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dsp_chain.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\lut_parser.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\halfduplex_ctrl.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\ttcgs_sys.v'
+Compiling module 'ttcgs_sys'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\ttcgs_sys.v":26)
+Compiling module 'dsp_chain'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dsp_chain.v":19)
+Compiling module 'dog_fir_multi'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dog_fir_multi.v":39)
+Extracting RAM for identifier 'coef_rom'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dog_fir_multi.v":69)
+Extracting RAM for identifier 'sbuf'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dog_fir_multi.v":81)
+WARN  (EX3988) : Cannot open file 'dog_coeffs.mem'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dog_fir_multi.v":70)
+WARN  (EX3791) : Expression size 24 truncated to fit in target size 16("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dog_fir_multi.v":163)
+WARN  (EX3791) : Expression size 6 truncated to fit in target size 5("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dsp_chain.v":121)
+WARN  (EX3791) : Expression size 6 truncated to fit in target size 5("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dsp_chain.v":130)
+Compiling module 'zscore_flag_multi'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v":38)
+Extracting RAM for identifier 'cal_sum'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v":69)
+Extracting RAM for identifier 'cal_sumsq'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v":70)
+Extracting RAM for identifier 'threshold'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v":71)
+Extracting RAM for identifier 'mu'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v":72)
+Extracting RAM for identifier 'roc_mem'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v":73)
+WARN  (EX3791) : Expression size 10 truncated to fit in target size 9("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v":96)
+Compiling module 'frame_packer'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\frame_packer.v":33)
+Compiling module 'crc16_ccitt'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\crc16_ccitt.v":17)
+Compiling module 'halfduplex_ctrl'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\halfduplex_ctrl.v":27)
+Compiling module 'manchester_tx'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_tx.v":21)
+Extracting RAM for identifier 'pbuf'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_tx.v":42)
+Compiling module 'manchester_enc'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_enc.v":20)
+Compiling module 'manchester_rx'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_rx.v":20)
+Compiling module 'lut_parser'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\lut_parser.v":27)
+Extracting RAM for identifier 'buf_dim'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\lut_parser.v":51)
+Extracting RAM for identifier 'buf_thr'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\lut_parser.v":52)
+NOTE  (EX0101) : Current top module is "ttcgs_sys"
+[5%] Running netlist conversion ...
+Running device independent optimization ...
+[10%] Optimizing Phase 0 completed
+[15%] Optimizing Phase 1 completed
+[25%] Optimizing Phase 2 completed
+Running inference ...
+[30%] Inferring Phase 0 completed
+[40%] Inferring Phase 1 completed
+[50%] Inferring Phase 2 completed
+[55%] Inferring Phase 3 completed
+Running technical mapping ...
+[60%] Tech-Mapping Phase 0 completed
+[65%] Tech-Mapping Phase 1 completed
+[75%] Tech-Mapping Phase 2 completed
+[80%] Tech-Mapping Phase 3 completed
+[90%] Tech-Mapping Phase 4 completed
+[95%] Generate netlist file "C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\impl\gwsynthesis\project.vg" completed
+[100%] Generate report file "C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\impl\gwsynthesis\project_syn.rpt.html" completed
+GowinSynthesis finish

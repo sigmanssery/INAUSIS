@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE gowin-synthesis-project>
+<Project>
+    <Version>beta</Version>
+    <Device id="GW1NR-9C" package="QFN88P" speed="6" partNumber="GW1NR-LV9QN88PC6/I5"/>
+    <FileList>
+        <File path="C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\crc16_ccitt.v" type="verilog"/>
+        <File path="C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_enc.v" type="verilog"/>
+        <File path="C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_tx.v" type="verilog"/>
+        <File path="C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_rx.v" type="verilog"/>
+        <File path="C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v" type="verilog"/>
+        <File path="C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dog_fir_multi.v" type="verilog"/>
+        <File path="C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\frame_packer.v" type="verilog"/>
+        <File path="C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dsp_chain.v" type="verilog"/>
+        <File path="C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\lut_parser.v" type="verilog"/>
+        <File path="C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\halfduplex_ctrl.v" type="verilog"/>
+        <File path="C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\ttcgs_sys.v" type="verilog"/>
+    </FileList>
+    <OptionList>
+        <Option type="disable_insert_pad" value="0"/>
+        <Option type="global_freq" value="50.000"/>
+        <Option type="looplimit" value="2000"/>
+        <Option type="output_file" value="C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\impl\gwsynthesis\project.vg"/>
+        <Option type="print_all_synthesis_warning" value="0"/>
+        <Option type="ram_rw_check" value="0"/>
+        <Option type="top_module" value="ttcgs_sys"/>
+        <Option type="vcc" value="1.2"/>
+        <Option type="verilog_language" value="verilog-2001"/>
+        <Option type="vhdl_language" value="vhdl-1993"/>
+    </OptionList>
+</Project>
