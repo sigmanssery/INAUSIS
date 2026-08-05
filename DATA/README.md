@@ -72,8 +72,37 @@ RP sd 619 counts
 drift   RP +122 counts/h (+0.39%/h)      L −0.37 counts/h (−0.027%/h)
 ```
 
-Use this as the no-target reference when normalising other captures. The drift
-figures matter for any measurement held longer than a few seconds: over a
-three-minute hold the instrument moves about 6 counts, against roughly 5300 counts
-for a firm press — a margin of ~900×, which is what makes sustained-load
-measurements meaningful at all.
+![idle baseline](soak_1h_idle_baseline.svg)
+
+Use this as the no-target reference when normalising other captures.
+
+**The linear drift figures above are not the whole story, and taking them as such
+will produce a false result.** RP leaves its baseline twice in this hour — at
+16.6–22.2 min and 35.2–38.6 min — by **−1717 and −1888 counts (−5.5%, −6.1%)**,
+in step-like excursions lasting two to four minutes. They are visible in the
+figure and they are not noise: they are far larger than the sample-to-sample
+standard deviation and they persist for minutes.
+
+L barely notices the same events, moving +2 and +1 count while RP falls by
+thousands. RP down with L slightly up is the signature of a small sensor-frequency
+shift, but RP falls roughly eighteen times more than `RP ∝ f²` would account for,
+so a loss change dominates. Whatever the cause, the two channels are affected
+enormously differently.
+
+### Which channel to use, by timescale
+
+| | idle baseline | worst change within any 3-minute window | firm press | ratio |
+|---|---:|---:|---:|---:|
+| **RP** | 31094 | **2103** counts (6.76%) | ~5300 | **2.5×** |
+| **L** | 1352 | **2.0** counts (0.15%) | ~35 | **17.5×** |
+
+For **transient events** — taps, onsets, releases — RP is the better channel: its
+response is large and the excursions above are far too slow to be mistaken for a
+tap.
+
+For anything held for **minutes** — creep, sustained load, slow relaxation — use
+**L**. RP's own baseline wanders by 40% of a full press response on exactly the
+timescale such a measurement occupies, which leaves no room to separate the
+specimen from the instrument. L's absolute response is much smaller, but it is
+quantisation-limited rather than wander-limited, and it wins by 7× on what
+actually matters here.
