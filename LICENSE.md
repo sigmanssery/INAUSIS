@@ -17,9 +17,9 @@ works need different instruments.
 SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 AND CC-BY-NC-4.0
 
 Full texts:
-[PolyForm-Noncommercial-1.0.0.txt](<./LICENSES/PolyForm NonCommercial 1.0.0.txt>)
+[PolyForm-Noncommercial-1.0.0.txt](<./LICENSES/PolyForm NonCommercial 1.0.0.txt>)/n
 https://polyformproject.org/licenses/noncommercial/1.0.0
-[CC-BY-NC-4.0.txt](<./LICENSES/Attribution-NonCommercial 4.0 International.txt>)
+[CC-BY-NC-4.0.txt](<./LICENSES/Attribution-NonCommercial 4.0 International.txt>)/n
 https://creativecommons.org/licenses/by-nc/4.0/legalcode
 
 
