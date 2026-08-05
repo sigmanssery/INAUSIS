@@ -1,0 +1,58 @@
+cff-version: 1.2.0
+title: >-
+  INAUSIS — a chain-aligned magnetorheological elastomer and a causal
+  Difference-of-Gaussians tactile front-end
+message: >-
+  If you use this work, please cite the repository and the companion
+  manuscript relevant to the part you used: the material paper for the
+  elastomer and its dual-modal physics, the TTCGS paper for the
+  signal-processing front-end.
+type: software
+authors:
+  - given-names: Pin-Han
+    family-names: Li
+    email: sigmansslee@gmail.com
+    city: Hsinchu
+    country: TW
+repository-code: 'https://github.com/sigmanssery/INAUSIS'
+abstract: >-
+  A biomimetic dual-modal tactile sensing front-end. A chain-aligned
+  magnetorheological elastomer provides a field-emission piezoresistive
+  readout below ~6 kPa and a permeability-coupled inductive readout above it,
+  with the handover fixed by the vanishing of dR/dP rather than by design
+  preference. A causal multi-scale Difference-of-Gaussians encoder with a
+  z-score significance-flag engine runs the whole datapath on a single
+  commodity FPGA at 27 MHz, transmitting an 18-dimensional feature vector and
+  an attention mask over a single-wire Manchester link with a CRC-protected
+  reverse channel.
+keywords:
+  - tactile sensing
+  - magnetorheological elastomer
+  - inductance-to-digital conversion
+  - Difference-of-Gaussians
+  - FPGA
+  - neuromorphic front-end
+license: CC-BY-NC-SA-4.0
+# NOTE: `license` above is a single SPDX id because the CFF schema allows only
+# one. The repository is actually dual-licensed — see LICENSE. Software under
+# CODE/ is PolyForm-Noncommercial-1.0.0.
+
+references:
+  - type: article
+    title: >-
+      A Chain-Aligned Magnetorheological Elastomer for Range-Partitioned
+      Dual-Modal Tactile Sensing
+    authors:
+      - given-names: Pin-Han
+        family-names: Li
+    status: in-preparation
+    year: 2026
+  - type: article
+    title: >-
+      Temporal Tactile Causal Gaussian Splash (TTCGS): A Single-DSP Causal
+      Difference-of-Gaussians Front-End for Multi-Scale Tactile Encoding
+    authors:
+      - given-names: Pin-Han
+        family-names: Li
+    status: in-preparation
+    year: 2026

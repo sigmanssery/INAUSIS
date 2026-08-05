@@ -1,0 +1,62 @@
+INAUSIS — licensing
+===================
+
+Copyright (c) 2026 Pin-Han Li. All rights reserved except as licensed below.
+
+This repository is licensed in two parts, because software and non-software
+works need different instruments.
+
+    Software      CODE/**            PolyForm Noncommercial 1.0.0
+                  (RTL, testbenches, scripts, tooling)
+
+    Everything    DATA/**            CC BY-NC-SA 4.0
+    else          MRE/**             (Attribution — NonCommercial — ShareAlike)
+                  PCB/**
+                  *.md, figures
+
+SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 AND CC-BY-NC-SA-4.0
+
+Full texts:
+    LICENSES/PolyForm-Noncommercial-1.0.0.md   https://polyformproject.org/licenses/noncommercial/1.0.0/
+    LICENSES/CC-BY-NC-SA-4.0.txt               https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+
+
+What this means in practice
+---------------------------
+
+You may read, run, modify, and redistribute this work for research, teaching,
+personal, and other noncommercial purposes, provided that you:
+
+  * give attribution to the author and to the two companion manuscripts
+    (see CITATION.cff), and
+  * license any derivative of the non-software parts under CC BY-NC-SA 4.0,
+    so that these same terms carry forward to anyone who builds on your
+    derivative in turn.
+
+You may not use this work, or anything derived from it, for commercial
+purposes without a separate written licence. If you want one, ask — academic
+and industrial collaboration are both welcome, and the noncommercial term
+exists to make that a conversation rather than an assumption.
+
+
+What this does not do
+---------------------
+
+A licence governs copying and adaptation. It cannot compel citation, and it
+cannot reach transitively through a citation chain: if a third party cites a
+paper that cited this work, that third party is under no licensing obligation
+to this work. Attribution beyond direct reuse is an academic norm enforced by
+convention and journal policy, not by copyright.
+
+The ShareAlike term is the transitive part that *is* enforceable: derivatives
+of the non-software material must carry the same licence, so the attribution
+and noncommercial requirements propagate to their derivatives as well.
+
+
+Setup note
+----------
+
+The two full licence texts are not reproduced here. Add them verbatim from the
+canonical sources above into LICENSES/ — do not retype them, download them, so
+that the operative text is exactly the official one. GitHub will then display
+the licence correctly in the repository sidebar.
