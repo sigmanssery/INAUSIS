@@ -1,0 +1,71 @@
+// dual_bringup.cst — Tang Nano 9K (GW1NR-9C) for top_dual (ADS + LDC combined).
+// ADS pins from bringup.cst; LDC pins + CLKIN(42) from ldc_bringup.cst. No
+// Manchester here, so pin 42 is free for CLKIN.
+
+// ─── System ───
+IO_LOC "clk27" 52;
+IO_LOC "rst_n"  4;
+IO_PORT "clk27" IO_TYPE=LVCMOS33;
+IO_PORT "rst_n" IO_TYPE=LVCMOS18 PULL_MODE=UP;
+
+// ─── Status LEDs (active-low, Bank3 1.8V) ───
+IO_LOC "led_init" 10;
+IO_LOC "led_acq"  11;
+IO_LOC "led_err"  13;
+IO_PORT "led_init" IO_TYPE=LVCMOS18 DRIVE=8;
+IO_PORT "led_acq"  IO_TYPE=LVCMOS18 DRIVE=8;
+IO_PORT "led_err"  IO_TYPE=LVCMOS18 DRIVE=8;
+
+// ─── ADS114S08 SPI (Bus A) ───
+IO_LOC "ads_cs_n"   25;
+IO_LOC "ads_sclk"   26;
+IO_LOC "ads_din"    27;
+IO_LOC "ads_dout"   28;
+IO_LOC "ads_drdy_n" 29;
+IO_LOC "ads_start"  30;
+IO_PORT "ads_cs_n"   IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+IO_PORT "ads_sclk"   IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "ads_din"    IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "ads_dout"   IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_PORT "ads_drdy_n" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_PORT "ads_start"  IO_TYPE=LVCMOS33 DRIVE=8;
+
+// ─── LDC1101 SPI (Bus B) + CLKIN ───
+IO_LOC "ldc_cs_n"  33;
+IO_LOC "ldc_sclk"  34;
+IO_LOC "ldc_sdi"   35;
+IO_LOC "ldc_sdo"   40;
+IO_LOC "ldc_clkin" 42;
+IO_PORT "ldc_cs_n"  IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+IO_PORT "ldc_sclk"  IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "ldc_sdi"   IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "ldc_sdo"   IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_PORT "ldc_clkin" IO_TYPE=LVCMOS33 DRIVE=4;
+
+// ─── UART TX ───
+IO_LOC "uart_tx" 17;
+IO_PORT "uart_tx" IO_TYPE=LVCMOS33 DRIVE=8;
+
+// ─── V4 spare-position signals ──────────────────────────────────────────────
+// Unconnected on the X004 board (top_dual holds them static there via V4_PINS).
+// Pinned here so the tool cannot auto-place them onto something in use.
+// Board-side pulls set the safe default while the FPGA is still configuring:
+//   ads_reset_n  10k  pull-UP   -> IOVDD   (active low)
+//   ldo_en       100k pull-UP   -> VIN     (high = rail on)
+//   ads_clk           pull-DOWN -> DGND    (low = ADS uses internal oscillator)
+IO_LOC "ads_reset_n" 38;
+IO_LOC "ldo_en"      37;
+IO_LOC "ads_clk"     36;
+IO_PORT "ads_reset_n" IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "ldo_en"      IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "ads_clk"     IO_TYPE=LVCMOS33 DRIVE=8;
+
+// ─── Pseudo-ground pins (driven LOW) — extra local ground for ADS & LDC ──────
+// LEFT header, right next to each peripheral (the single real GND is on the far
+// RIGHT header, so give each block a local ground return on its own side).
+//   39 = IOB33A (TF_MISO)  -> by the ADS block; harmless if no microSD inserted
+//   41 = IOB41A (RGB_CK)   -> in the LDC block; harmless if no RGB LCD attached
+IO_LOC "gnd_ads" 39;
+IO_LOC "gnd_ldc" 41;
+IO_PORT "gnd_ads" IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "gnd_ldc" IO_TYPE=LVCMOS33 DRIVE=8;

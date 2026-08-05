@@ -1,0 +1,45 @@
+// bringup.cst — Tang Nano 9K (GW1NR-9C C6/I5) 脚位约束 for top_bringup
+// Phase 1 bring-up: ADS114S08 SPI 验证 + UART 回报。脚位与 top_bringup.v 注解一致。
+// (由现成 inausis.cst 改来，移除 Phase 1 用不到的 Manchester line/pin42)
+
+// ─── System ───────────────────────────────────────────────────────────────
+IO_LOC "clk27"  52;          // 板载 27 MHz
+IO_LOC "rst_n"   4;          // S2 按钮, active-low
+IO_PORT "clk27" IO_TYPE=LVCMOS33;
+IO_PORT "rst_n" IO_TYPE=LVCMOS18 PULL_MODE=UP;
+
+// ─── Status LEDs (active-low, Bank3 1.8V) ───────────────────────────────────
+IO_LOC "led_init" 10;
+IO_LOC "led_acq"  11;
+IO_LOC "led_err"  13;
+IO_PORT "led_init" IO_TYPE=LVCMOS18 DRIVE=8;
+IO_PORT "led_acq"  IO_TYPE=LVCMOS18 DRIVE=8;
+IO_PORT "led_err"  IO_TYPE=LVCMOS18 DRIVE=8;
+
+// ─── ADS114S08 SPI (Bus A) ──────────────────────────────────────────────────
+IO_LOC "ads_cs_n"   25;
+IO_LOC "ads_sclk"   26;
+IO_LOC "ads_din"    27;
+IO_LOC "ads_dout"   28;
+IO_LOC "ads_drdy_n" 29;
+IO_LOC "ads_start"  30;
+IO_PORT "ads_cs_n"   IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+IO_PORT "ads_sclk"   IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "ads_din"    IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "ads_dout"   IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_PORT "ads_drdy_n" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_PORT "ads_start"  IO_TYPE=LVCMOS33 DRIVE=8;
+
+// ─── LDC1101 SPI (Bus B) — Phase 1 保持 idle (CS 拉高) ──────────────────────
+IO_LOC "ldc_cs_n" 33;
+IO_LOC "ldc_sclk" 34;
+IO_LOC "ldc_sdi"  35;
+IO_LOC "ldc_sdo"  40;
+IO_PORT "ldc_cs_n" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+IO_PORT "ldc_sclk" IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "ldc_sdi"  IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "ldc_sdo"  IO_TYPE=LVCMOS33 PULL_MODE=UP;
+
+// ─── UART TX ────────────────────────────────────────────────────────────────
+IO_LOC "uart_tx" 17;
+IO_PORT "uart_tx" IO_TYPE=LVCMOS33 DRIVE=8;

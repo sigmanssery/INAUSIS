@@ -1,0 +1,49 @@
+// inausis.cst — Tang Nano 9K (GW1NR-9C C6/I5) pin constraints for ttcgs_board
+// Pin numbers schematic-verified (carried over from the bring-up .cst).
+//   die 25-30 = J5 pos 5-10 (Bank6, 3.3V free GPIO); 33-35,40 = J5 pos 11-14
+//   (RGB, free if no LCD); 42+ = generic GPIO (safe). 36-39 = TF card, DO NOT USE.
+
+// ─── System ───────────────────────────────────────────────────────────────
+IO_LOC "clk27"  52;          // onboard 27 MHz oscillator
+IO_LOC "rst_n"   4;          // S2 button, active-low
+IO_PORT "clk27" IO_TYPE=LVCMOS33;
+IO_PORT "rst_n" IO_TYPE=LVCMOS18 PULL_MODE=UP;
+
+// ─── Status LEDs (active-low, Bank3 1.8V) ───────────────────────────────────
+IO_LOC "led_init" 10;
+IO_LOC "led_acq"  11;
+IO_LOC "led_err"  13;
+IO_PORT "led_init" IO_TYPE=LVCMOS18 DRIVE=8;
+IO_PORT "led_acq"  IO_TYPE=LVCMOS18 DRIVE=8;
+IO_PORT "led_err"  IO_TYPE=LVCMOS18 DRIVE=8;
+
+// ─── ADS114S08 SPI (piezoresistive) ─────────────────────────────────────────
+IO_LOC "ads_cs_n"   25;
+IO_LOC "ads_sclk"   26;
+IO_LOC "ads_din"    27;
+IO_LOC "ads_dout"   28;
+IO_LOC "ads_drdy_n" 29;
+IO_LOC "ads_start"  30;
+IO_PORT "ads_cs_n"   IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+IO_PORT "ads_sclk"   IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "ads_din"    IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "ads_dout"   IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_PORT "ads_drdy_n" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_PORT "ads_start"  IO_TYPE=LVCMOS33 DRIVE=8;
+
+// ─── LDC1101 SPI (inductive) — held idle (stub) until bench bring-up ────────
+IO_LOC "ldc_cs_n" 33;
+IO_LOC "ldc_sclk" 34;
+IO_LOC "ldc_sdi"  35;
+IO_LOC "ldc_sdo"  40;
+IO_LOC "ldc_clkin" 41;   // ~3.375 MHz reference clock -> LDC CLKIN (needed for L). VERIFY pin free/accessible on board.
+IO_PORT "ldc_cs_n" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+IO_PORT "ldc_sclk" IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "ldc_sdi"  IO_TYPE=LVCMOS33 DRIVE=8;
+IO_PORT "ldc_sdo"  IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_PORT "ldc_clkin" IO_TYPE=LVCMOS33 DRIVE=4;
+
+// ─── Single-wire half-duplex Manchester link to SoC ─────────────────────────
+// generic GPIO; pull-up sets the idle (recessive) level during turnaround.
+IO_LOC "line" 42;
+IO_PORT "line" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;

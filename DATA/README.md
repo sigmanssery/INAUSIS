@@ -26,7 +26,7 @@ against.
 ## Capture conventions
 
 Raw captures follow `YYYY-MM-DD_<topic>_raw.csv`, one row per synchronized sample
-set, written by `log_dual.py`:
+set, written by [`CODE/V1/05_host_tools/log_dual.py`](../CODE/V1/05_host_tools/log_dual.py):
 
 ```
 t_s, ch0..ch3, rp, l, rp_hex, l_hex, bad_ads, status, no_osc, chip_id, mark

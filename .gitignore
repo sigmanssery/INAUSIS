@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Gowin EDA intermediates — the reports under impl/ are committed deliberately,
+# but the tool also drops project state and bitstreams that are rebuildable.
+*.fs
+*.bin
+impl/gwsynthesis/*.db
+impl/temp/
+*.gprj.user
+
+# Capture side-effects from the host tools
+*.csv.status
+*.csv.log
+
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
