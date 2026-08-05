@@ -12,9 +12,16 @@ This repository is licensed in two parts, because software and non-software work
 
 SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 AND CC-BY-NC-4.0
 
-### Full texts:
-* **[PolyForm-Noncommercial-1.0.0.txt](<./LICENSES/PolyForm NonCommercial 1.0.0.md>)** ([Official Link](https://polyformproject.org/licenses/noncommercial/1.0.0))
-* **[CC-BY-NC-4.0.txt](<./LICENSES/Attribution-NonCommercial 4.0 International.txt>)** ([Official Link](https://creativecommons.org/licenses/by-nc/4.0/legalcode))
+### Full texts
+
+* **[PolyForm Noncommercial 1.0.0](<./LICENSES/PolyForm NonCommercial 1.0.0.md>)** — [official source](https://polyformproject.org/licenses/noncommercial/1.0.0)
+* **[CC BY-NC 4.0](<./LICENSES/Attribution-NonCommercial 4.0 International.md>)** — [official source](https://creativecommons.org/licenses/by-nc/4.0/legalcode)
+
+The CC copy here is the canonical legalcode reformatted as Markdown for
+readability: headings, list nesting and paragraph wrapping only. No word was
+added, removed, or altered, and the conversion was verified word-for-word
+against the source. Where any doubt arises, the official text at the link above
+governs.
 
 What this means in practice
 ---------------------------
@@ -42,7 +49,15 @@ What a licence cannot do
 
 A licence governs copying and adaptation. It cannot compel citation, and it cannot reach through a citation chain: if a third party cites a paper that cited this work, that third party is under no licensing obligation here. Attribution beyond direct reuse is an academic norm, enforced by convention and journal policy rather than by copyright.
 
-Setup note
-----------
+A note on the sidebar
+---------------------
 
-The two full licence texts are not reproduced here. Add them verbatim from the canonical sources above into LICENSES/ — do not retype them, download them, so that the operative text is exactly the official one. GitHub will then display the licence correctly in the repository sidebar.
+GitHub identifies a licence by matching the repository's root licence file
+against known texts. This file is an explanation of a two-part arrangement
+rather than a copy of either licence, so the sidebar will not show a licence
+name. That is a display artifact, not an ambiguity: the table above says which
+terms apply to which paths, and the full texts are in `LICENSES/`.
+
+A single badge could not describe this repository correctly in any case — it
+would have to pick one of the two, and would most likely imply that the code is
+under a Creative Commons licence, which it is not.
