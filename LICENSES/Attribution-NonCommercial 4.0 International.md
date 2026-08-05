@@ -52,7 +52,6 @@ exhaustive, and do not form part of our licenses.
      for the public:
     wiki.creativecommons.org/Considerations_for_licensees
 
-=======================================================================
 
 ## Creative Commons Attribution-NonCommercial 4.0 International Public
 License
@@ -385,7 +384,6 @@ Rights include other Copyright and Similar Rights.
      that apply to the Licensor or You, including from the legal
      processes of any jurisdiction or authority.
 
-=======================================================================
 
 ## Creative Commons is not a party to its public
 licenses. Notwithstanding, Creative Commons may elect to apply one of
