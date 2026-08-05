@@ -32,7 +32,7 @@ keywords:
   - Difference-of-Gaussians
   - FPGA
   - neuromorphic front-end
-license: CC-BY-NC-SA-4.0
+license: CC-BY-NC-4.0
 # NOTE: `license` above is a single SPDX id because the CFF schema allows only
 # one. The repository is actually dual-licensed — see LICENSE. Software under
 # CODE/ is PolyForm-Noncommercial-1.0.0.

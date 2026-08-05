@@ -188,27 +188,38 @@ manuscripts correspond directly to the measurements listed as open above.
 Dual-licensed, and deliberately so:
 
 - **Software** (`CODE/**`) — PolyForm Noncommercial 1.0.0
-- **Everything else** (`DATA/`, `MRE/`, `PCB/`, docs, figures) — CC BY-NC-SA 4.0
+- **Everything else** (`DATA/`, `MRE/`, `PCB/`, docs, figures) — CC BY-NC 4.0
 
-Research, teaching, and personal use are free. Attribution is required, and the
-ShareAlike term carries these same conditions forward to anyone who builds on a
-derivative. See [LICENSE](LICENSE) for what the licence does and does not do —
-in particular, it governs reuse, not citation chains.
+Research, teaching, and personal use are unrestricted. Attribution is required,
+and it travels: nobody can grant rights they do not hold, so anyone using this
+material as part of someone else's larger work still needs a licence for the part
+that originated here. There is **no ShareAlike** term — it would burden anyone
+integrating this into a larger design without adding any protection that
+attribution and the noncommercial term do not already provide.
 
-### Commercial use — please ask
+See [LICENSE](LICENSE) for what the licence does and does not do — in particular,
+it governs reuse, not citation chains.
+
+### Commercial use — the doorbell is answered
 
 Commercial use is **not** granted by the public licence, and that is not a closed
 door. It is an open one with a doorbell.
 
 If you want to use any part of this in a product, a funded evaluation, or an
-industrial research programme, contact me and we will work out terms. The
-noncommercial clause exists so that this is a conversation rather than something
-that happens without my knowing. I am the sole copyright holder, so I can grant
-commercial terms directly — no institutional approval chain to wait on.
+industrial research programme, write to **sigmansslee@gmail.com**. Say which parts
+interest you (the elastomer, the front-end architecture, the RTL, or the whole
+stack) and what you intend to build.
 
-Enquiries: **sigmansslee@gmail.com** — say which parts you are interested in
-(the elastomer, the front-end architecture, the RTL, or the whole stack) and what
-you intend to build.
+**Terms are negotiable and enquiries get a reply.** I am the sole copyright
+holder, so I can grant commercial terms directly — there is no institutional
+approval chain in the way, and no technology-transfer office to route through.
+The noncommercial clause exists to make this a conversation, not to prevent one.
+
+## Contributing
+
+Issues, reproduction reports, and corrections are very welcome — especially from
+anyone who builds the elastomer and measures something different. Code pull
+requests are not accepted, for reasons given in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Citing this work
 
