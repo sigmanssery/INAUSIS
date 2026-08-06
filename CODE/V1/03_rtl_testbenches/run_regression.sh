@@ -4,7 +4,7 @@
 # Requires Icarus Verilog (iverilog + vvp) on PATH. Run from this directory
 # (03_rtl_testbenches) so the .mem test vectors and ../02_rtl_production sources
 # resolve. On a machine without iverilog, use the EDA Playground bundles in
-# ../eda_playground/ instead (see REGRESSION.md).
+# the EDA Playground bundles (not published here) instead (see this README).
 #
 #   ./run_regression.sh
 #

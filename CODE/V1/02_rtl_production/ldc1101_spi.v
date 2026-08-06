@@ -2,7 +2,7 @@
 //=============================================================================
 // ldc1101_spi.v  — LDC1101 sampling SPI master (inductive L + RP)
 //
-// REWRITTEN 2026-06-17 after real-hardware bring-up. Two fixes vs the prior
+// REWRITTEN 2026-06-17 after real-hardware bring-up, and revised again through
 // version (both proven on HW via gowin_syn/ldc_regcheck.v, which read
 // CHIP_ID=0xD4 and round-tripped a WREG/RREG):
 //

@@ -43,7 +43,7 @@ right, it gets made, and you get credited in the commit and in the release notes
 
 ## Forking
 
-Fork freely, within the licence (see [LICENSE](LICENSE)). Research, teaching, and
+Fork freely, within the licence (see [LICENSE](LICENSE.md)). Research, teaching, and
 personal use are unrestricted; commercial use needs a separate agreement, which
 is a conversation rather than a refusal — sigmansslee@gmail.com.
 

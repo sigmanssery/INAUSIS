@@ -46,15 +46,19 @@ of additional attenuation at 300 Hz over a 16-tap MA differential, and the MA
 staying within **2.5 dB** of its peak across 200–500 Hz — which makes it a check
 on those claims rather than an illustration of them.
 
-The MA baseline is `y[n] = x[n] − MA₁₆(x)`, matching `05_figures/make_fig6.py`.
-This matters: a difference of two adjacent moving averages is a *band-pass with
-nulls*, not a high-pass, and 300 Hz lands in one of those nulls — using it would
-invert the sign of the comparison.
+The MA baseline is `y[n] = x[n] − MA₁₆(x)`, which must match the definition
+behind the paper's analytical figure. This matters: a difference of two adjacent
+moving averages is a *band-pass with nulls*, not a high-pass, and 300 Hz lands in
+one of those nulls — using it inverts the sign of the comparison.
 
 It also warns when a capture's native rate is well under 1 kSPS. Upsampling adds
 no information, so there is no out-of-band content for the two filters to
-separate on and they overlay exactly; the sidelobe-leakage claim can only be
-demonstrated on a genuine 1 kSPS capture.
+separate on and they overlay exactly.
+
+> **`FS = 1000` here is an assumption the hardware does not currently meet** —
+> the measured per-channel update rate is about 48 SPS. See
+> [SAMPLE_RATE.md](SAMPLE_RATE.md) before taking any frequency from this script
+> as a property of the built system.
 
 If you want to check one claim in this repository, check this one:
 `fixed_point_analysis.py` is where the assertion that Q15 coefficients survive the
@@ -108,12 +112,21 @@ time, so the stream carries stale values for half of every cycle.
 
 ## Results
 
-Post-route, GW1NR-LV9QN88PC6/I5 @ 27 MHz — reports in `02_rtl_production/impl/pnr/`:
+Post-route, GW1NR-LV9QN88PC6/I5 @ 27 MHz:
 
 ```
 3334 logic cells   2107 registers   5 BSRAM   4 DSP
 Fmax 45.6 MHz      setup/hold violations: 0
 ```
+
+> **These figures are not backed by any report committed here.** The
+> `ttcgs_board` place-and-route output was overwritten by later bring-up builds —
+> Gowin writes every target into the same `impl/` directory. What is in
+> `02_rtl_production/impl/pnr/` is a `top_dual` bring-up run from 2026-08-01
+> (Logic 1000/8640, Register 633/6693), which is a different design entirely.
+> See [impl/README.md](02_rtl_production/impl/README.md) for how to regenerate
+> the real thing. Until that is done, treat the numbers above as reported but
+> unevidenced.
 
 The reverse channel costs **+274 logic cells (+10.6%)** over the forward-only
 datapath. Closing the inference-to-sensing loop is essentially free.
@@ -129,20 +142,26 @@ cd 03_rtl_testbenches
 ./run_regression.sh
 ```
 
-11 benches, all passing, checked against `01_golden_model/`.
-
 Icarus Verilog with `-g2012`. **Verilator does not work here**: the benches use
 `#` delays and hierarchical memory peeks.
 
+The script runs **12** benches — this list is the script's, not a wish list:
+
 | Bench | Covers |
 |---|---|
-| `tb_dog_multi` | DoG filter vs golden model |
-| `tb_flag_multi`, `tb_thr_check`, `tb_mask_check` | z-score engine, thresholds, mask |
-| `tb_packer`, `tb_crc`, `tb_rev_crc` | framing and CRC both directions |
-| `tb_manch_48`, `tb_pack_manch`, `tb_halfduplex`, `tb_hd2` | line coding and turnaround |
-| `tb_parser`, `tb_closeloop` | reverse LUT updates, full inference-to-sensing loop |
+| `tb_thr_check`, `tb_mask_check` | z-score thresholds and the attention mask |
+| `tb_packer`, `tb_pack_manch`, `tb_rev_crc` | framing, line coding, reverse-path CRC |
+| `tb_closeloop` | full inference-to-sensing loop |
 | `tb_dead`, `tb_failsafe` | dead-channel map, loss-of-lock behaviour |
-| `tb_sys`, `tb_chain_full` | whole-system integration |
+| `tb_sys`, `tb_top_lite` | system integration, forward-only top |
+| `tb_chain_lite`, `tb_chain_full_lite` | whole-chain, reduced-length stimulus |
+
+Several benches present in this directory are **not** in the regression:
+`tb_dog_multi`, `tb_flag_multi`, `tb_crc`, `tb_manch_48`, `tb_halfduplex`,
+`tb_hd2`, `tb_parser`, `tb_chain_full`. They are kept because they exercise
+their modules in isolation, but the `_lite` variants superseded the long-running
+ones and the script was never widened again. **If a claim rests on one of those,
+it rests on a bench nobody runs** — add it to `run_regression.sh` first.
 
 ## 04_constraints — reproducing the fit
 

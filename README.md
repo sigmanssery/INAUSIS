@@ -64,8 +64,8 @@ Status codes follow the manuscripts: **D** designed · **R** RTL implemented ·
 | Item | State |
 |---|---|
 | Full bidirectional datapath (`ttcgs_sys`) | **R** — RTL complete |
-| Simulation vs bit-exact fixed-point golden model | **V** — 11/11 regression pass |
-| Synthesis, place & route, timing closure | **V** — see below |
+| Simulation vs bit-exact fixed-point golden model | **V** — 12/12 regression pass |
+| Synthesis, place & route, timing closure | **V** — but see the caveat below |
 | Streaming real samples from both converters | **V** |
 | Measured DoG waveforms under controlled loading | **B** |
 
@@ -75,6 +75,15 @@ Post-route on GW1NR-LV9QN88PC6/I5 at the native 27 MHz crystal (no PLL):
 3334 logic cells   2107 registers   5 BSRAM   4 DSP
 Fmax 45.6 MHz      setup/hold violations: 0
 ```
+
+> **Reported, but not evidenced by anything committed here.** The `ttcgs_board`
+> place-and-route output was overwritten by later bring-up builds — Gowin writes
+> every target into one `impl/` directory, so synthesising a different top
+> silently destroys the previous target's reports. What is in
+> `CODE/V1/02_rtl_production/impl/pnr/` is a `top_dual` bring-up run from
+> 2026-08-01 (Logic 1000/8640, Register 633/6693), a different design entirely.
+> See [impl/README.md](CODE/V1/02_rtl_production/impl/README.md) for how to
+> regenerate the real run.
 
 The reverse channel costs **+274 logic cells (+10.6%)** over the forward-only
 datapath — closing the inference-to-sensing loop is essentially free.
@@ -95,7 +104,7 @@ on-board regulators), so a measured-context upper bound is ≈0.27 W.
 | Item | State |
 |---|---|
 | ADS114S08 link (register read-back + write/read-back) | **V** |
-| ADS114S08 streaming 16-bit signed conversions, 4 × 1 kSPS | **V** |
+| ADS114S08 streaming 16-bit signed conversions | **V** — but at ~48 SPS/channel, not the specified 1 kSPS; see [SAMPLE_RATE.md](CODE/V1/SAMPLE_RATE.md) |
 | LDC1101 link (CHIP_ID 0xD4, WREG/RREG round-trip) | **V** |
 | LC tank oscillating, stable L against ±2 LSB baseline | **V** |
 | Bare-coil material discrimination by sign of ΔL | **V** |
@@ -197,7 +206,7 @@ that originated here. There is **no ShareAlike** term — it would burden anyone
 integrating this into a larger design without adding any protection that
 attribution and the noncommercial term do not already provide.
 
-See [LICENSE](LICENSE) for what the licence does and does not do — in particular,
+See [LICENSE](LICENSE.md) for what the licence does and does not do — in particular,
 it governs reuse, not citation chains.
 
 ### Commercial use — the doorbell is answered

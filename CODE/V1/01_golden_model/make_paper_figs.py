@@ -57,11 +57,10 @@ N_MA = 16
 def ma_kernel(n_taps=N_TAPS, n=N_MA):
     """The MA differential the paper compares against: y[n] = x[n] - MA_n(x).
 
-    This must stay identical to 05_figures/make_fig6.py, which produced the
-    analytical response in the paper. A difference of two adjacent moving
-    averages is a different filter — a band-pass with nulls rather than a
-    high-pass — and using it here would put the measured figure in direct
-    contradiction with the analytical one a few pages earlier.
+    This definition is load-bearing and must match the one behind the paper's
+    analytical response figure. A difference of two adjacent moving averages is
+    a different filter — a band-pass with nulls rather than a high-pass — 300 Hz
+    lands in one of those nulls, and using it inverts the sign of the result.
     """
     k = np.zeros(n_taps)
     k[0] = 1.0            # delta
