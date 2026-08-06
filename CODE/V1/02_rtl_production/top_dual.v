@@ -183,23 +183,41 @@ module top_dual (
         end
     end
 
-    // ─── slot sequencer: build + fire one line per slot, 6 slots per ~10ms ──
-    // FAST_LDC: stream ONLY "RP :"/"L  :" as fast as the UART allows, for
-    // transient work (hammer taps, MRE viscoelastic ringing). At the normal 10 ms
-    // burst the L channel is sampled at ~93 SPS — Nyquist 46 Hz — so an elastomer
-    // ringdown in the 10-100 Hz range aliases into nonsense, and a 1-5 ms impact
-    // lands on at most one sample (which the median-of-3 then deletes as a spike).
-    // Two 11-char lines at 921600 8N1 take ~238 us, so ~1 kHz is comfortable; that
-    // also happens to be the rate TTCGS's sigmas are defined at, which finally
-    // makes the paper's 2 ms reflex band measurable on L.
-    // The medians are bypassed in this mode — they exist to kill single-sample
-    // spikes, which is exactly what a real impact looks like here.
+    // ─── slot sequencer: build + fire one UART line per slot ────────────────
+    // Rate is set by STREAM_MODE below. Why it matters: at the 10 ms burst the
+    // channels are sampled at ~93 SPS — Nyquist 46 Hz — so an elastomer ringdown
+    // in the 10-100 Hz band aliases into nonsense, and a 1-5 ms impact lands on
+    // at most one sample, which the median-of-3 then deletes as a spike. 1 kHz is
+    // also the rate TTCGS's sigmas are defined at, so it is what the paper's
+    // touch/release figures and its 2 ms reflex band require.
+    //
+    // FAST_LDC now controls only the median filters, not the rate. Bypass them
+    // for transient work — they exist to kill single-sample spikes, which is
+    // exactly what a real impact looks like. Keep them for anything slow, where
+    // a lone corrupt read is noise rather than signal.
     localparam FAST_LDC = 1'b0;
 
+    // ── UART stream mode ────────────────────────────────────────────────────
+    // The board only ever has one modality wired at a time, so streaming both
+    // costs bandwidth for lines that carry nothing. It also caps the rate: all
+    // eight lines are 88 bytes = 880 bits, which at 921600 baud is 0.955 ms —
+    // 95% of a 1 ms period, and that saturation is what produced ~12% corrupt
+    // reads the last time a 1 kHz period was tried. One modality is 4 lines =
+    // 0.48 ms, so 1 kSPS fits with the line half idle.
+    //
+    //   0 = both, 10 ms  (~100 Hz)   slots 0-7  — bring-up / dual capture
+    //   1 = ADS only, 1 ms (1 kHz)   slots 0-3  — the rate the DoG pipeline is
+    //                                             specified at; needed for the
+    //                                             touch/release figures
+    //   2 = LDC only, 1 ms (1 kHz)   slots 4-7  — RP/L/ST/ID at the LDC's own
+    //                                             loop rate, for transients
+    localparam [1:0] STREAM_MODE = 2'd0;
+
     reg [2:0]  slot; reg [15:0] val; reg [22:0] dcnt; reg acq;
-    localparam [22:0] PERIOD = FAST_LDC ? 23'd27000    // ~1 ms
-                                        : 23'd270000;  // ~10 ms
-    localparam [2:0]  SLOT_FIRST = FAST_LDC ? 3'd4 : 3'd0;   // 4 = "RP :", 5 = "L  :"
+    localparam [22:0] PERIOD = (STREAM_MODE == 2'd0) ? 23'd270000   // ~10 ms
+                                                     : 23'd27000;   // ~1 ms
+    localparam [2:0]  SLOT_FIRST = (STREAM_MODE == 2'd2) ? 3'd4 : 3'd0;
+    localparam [2:0]  SLOT_LAST  = (STREAM_MODE == 2'd1) ? 3'd3 : 3'd7;
     localparam [2:0] S_WAIT=3'd0, S_BUILD=3'd1, S_HEX=3'd2, S_FIRE=3'd3,
                      S_BUSY=3'd4, S_NEXT=3'd5;
     reg [2:0] sstate;
@@ -239,7 +257,7 @@ module top_dual (
             end
             S_FIRE: begin print_start<=1'b1; sstate<=S_BUSY; end
             S_BUSY: if (!print_busy && !print_start) sstate<=S_NEXT;
-            S_NEXT: if (slot==3'd7) begin acq<=~acq; sstate<=S_WAIT; end
+            S_NEXT: if (slot==SLOT_LAST) begin acq<=~acq; sstate<=S_WAIT; end
                     else begin slot<=slot+3'd1; sstate<=S_BUILD; end
             endcase
         end

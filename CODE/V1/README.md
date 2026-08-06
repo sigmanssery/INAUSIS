@@ -37,6 +37,24 @@ that are burned into the on-FPGA coefficient ROM.
 | `fixed_point_analysis.py` | produces the **53.3 dB** (DoG_fast) / **62.8 dB** (DoG_slow) SNR figures quoted in the paper |
 | `verify_square_method.py` | checks the squared-domain comparison used by the flag engine |
 | `run_on_capture.py` | runs the golden model over a real captured CSV rather than synthetic stimulus |
+| `make_paper_figs.py` | the measured touch/release and DoG-vs-MA figures, straight from a capture |
+
+`make_paper_figs.py` imports the kernels from `ttcgs_golden_model` rather than
+re-deriving them, so the figures show what the coefficient ROM contains. It
+reproduces two numbers quoted in the paper from first principles — **12.0 dB**
+of additional attenuation at 300 Hz over a 16-tap MA differential, and the MA
+staying within **2.5 dB** of its peak across 200–500 Hz — which makes it a check
+on those claims rather than an illustration of them.
+
+The MA baseline is `y[n] = x[n] − MA₁₆(x)`, matching `05_figures/make_fig6.py`.
+This matters: a difference of two adjacent moving averages is a *band-pass with
+nulls*, not a high-pass, and 300 Hz lands in one of those nulls — using it would
+invert the sign of the comparison.
+
+It also warns when a capture's native rate is well under 1 kSPS. Upsampling adds
+no information, so there is no out-of-band content for the two filters to
+separate on and they overlay exactly; the sidelobe-leakage claim can only be
+demonstrated on a genuine 1 kSPS capture.
 
 If you want to check one claim in this repository, check this one:
 `fixed_point_analysis.py` is where the assertion that Q15 coefficients survive the
@@ -70,6 +88,23 @@ And the analog front-end cores, current versions:
 | `ads114s08_spi.v` | `CLK_DIV` 56 (~241 kHz). Slowing the SPI clock cut converter noise ~60× (±97 → ±1.5 LSB); do not speed it back up |
 | `ldc1101_spi.v` | **SPI Mode 0**, STATUS read *after* the data registers, POR auto-recovery, and CHIP_ID re-read every sample loop |
 | `top_dual.v` | dual-converter readout used for every measured capture in `DATA/`; RP and L median-of-3, sticky STATUS |
+
+`top_dual.v` has a `STREAM_MODE` switch, because the UART, not the converters,
+sets the achievable rate. All eight lines are 88 bytes = 880 bits, which at
+921600 baud occupies 0.955 ms — 95% of a 1 ms period, and that saturation is
+what produced ~12% corrupt reads the last time 1 kHz was attempted.
+
+| mode | streams | period | line load |
+|---:|---|---:|---:|
+| 0 | both, slots 0–7 | 10 ms | 9.5% |
+| 1 | ADS only, slots 0–3 | 1 ms | 48% |
+| 2 | LDC only, slots 4–7 | 1 ms | 48% |
+
+One modality at a time is what makes 1 kSPS — the rate the DoG pipeline is
+specified at — reachable over this link. Set `TIME_MUX = 0` for either
+single-modality mode: it exists to stop two converters contending for one
+supply rail, and while it is on the idle core is held in reset for 150 ms at a
+time, so the stream carries stale values for half of every cycle.
 
 ## Results
 
