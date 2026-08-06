@@ -34,6 +34,33 @@ conversion before the next is started, so the four channels run in series with
 SPI overhead between them, and the aggregate lands roughly 20× below the
 specified figure.
 
+## And TIME_MUX turns out to be load-bearing
+
+`top_dual.v`'s `TIME_MUX` exists to stop the two converters contending for one
+supply rail — it holds each core in reset for 150 ms at a time. It is documented
+as an option for single-board use.
+
+It is not an option. Measured 2026-08-06, same wiring, only this parameter
+changed:
+
+```
+TIME_MUX = 0   ch0 converts once, then stops. ch1..ch3 never update at all.
+TIME_MUX = 1   all four channels update continuously, ~31-48 SPS each
+```
+
+So the ADS driver only keeps running because something resets it every 300 ms.
+Whatever stalls it — the DRDY edge detector never seeing another falling edge is
+the leading suspect, since `S_WAITDR` waits on an edge and single-shot DRDY must
+return high before it can fall again — the periodic reset has been masking it,
+and every ADS capture in `DATA/` was taken under that reset.
+
+This compounds the rate problem rather than replacing it: TIME_MUX costs half the
+wall time outright, plus ~15 ms of re-initialisation (`POR_CYC` 5 ms + `GAP_CYC`
+10 ms) at the start of each 150 ms window.
+
+**Confirming the mechanism needs a scope on DRDY.** It is not diagnosable from
+the captured stream alone.
+
 ## What follows
 
 - **The passband claims move.** At 800 SPS the DoG_fast peak is ≈38.7 Hz rather
