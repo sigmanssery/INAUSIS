@@ -6,7 +6,8 @@ __pycache__/
 # but the tool also drops project state and bitstreams that are rebuildable.
 *.fs
 *.bin
-impl/gwsynthesis/*.db
+*.binx
+impl/*/*.db
 impl/temp/
 *.gprj.user
 
