@@ -7,8 +7,10 @@ __pycache__/
 *.fs
 *.bin
 *.binx
-impl/*/*.db
-impl/temp/
+# a slash mid-pattern anchors to this file's directory, so impl/ must be
+# reached with **/ — the old impl/gwsynthesis/*.db never matched anything
+**/impl/*/*.db
+**/impl/temp/
 *.gprj.user
 
 # Capture side-effects from the host tools
