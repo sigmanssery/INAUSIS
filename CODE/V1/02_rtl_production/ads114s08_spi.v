@@ -26,7 +26,7 @@
 // them) — only spi_done was added; the FSM and bit counts are the fix.
 //
 // SPI Mode 1-ish: SCLK idle LOW, DIN shifted on falling, DOUT sampled on rising.
-// Clock: 27 MHz; SPI ~964 kHz (CLK_DIV=14). Ports unchanged (top_bringup /
+// Clock: 27 MHz; SPI ~1.93 MHz (CLK_DIV=14). Ports unchanged (top_bringup /
 // ttcgs_board instantiate this as-is).
 
 module ads114s08_spi (
@@ -50,13 +50,17 @@ module ads114s08_spi (
 );
 
 // ─── SPI clock divider (VERBATIM original) ─────────────────────────────────────
-// 2026-07-03: was 14 (~964 kHz). On the current wiring ~32% of reads came back
+// 2026-07-03: was 14 (~1.93 MHz). On the current wiring ~32% of reads came back
 // bit-misaligned or railed (0x7Fxx) in EVERY bitstream — ADS-only, dual-simul
 // and dual-timemux alike — i.e. a marginal SPI link, not core interference.
-// 56 -> 27 MHz / 112 = ~241 kHz, 4x the setup/hold margin over long jumpers.
+// 56 -> 27 MHz / 56 = ~482 kHz, 4x the setup/hold margin over long jumpers.
+// SCLK period is CLK_DIV system clocks (counter wraps at CLK_DIV, falling
+// strobe at CLK_DIV/2) -- NOT 2*CLK_DIV. Comments here said 241 kHz by
+// dividing by 112; corrected 2026-08-07 after a logic analyser measured
+// 2.074 us/clock = 482 kHz. See DATA/2026-08-07_ADS-SPI-DRDY_*.sr.
 // Counter widened to 8 bits to hold the larger count. Raise back once the
 // harness is short/properly grounded, if the extra sample rate is wanted.
-localparam CLK_DIV = 56;            // 27 MHz / 112 = ~241 kHz
+localparam CLK_DIV = 56;            // 27 MHz / 56 = ~482 kHz
 reg [7:0]  clk_cnt;
 reg        sclk_en;                 // rising-edge strobe
 reg        sclk_fall;               // falling-edge strobe

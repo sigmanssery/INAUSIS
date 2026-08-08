@@ -26,7 +26,7 @@
 // them) — only spi_done was added; the FSM and bit counts are the fix.
 //
 // SPI Mode 1-ish: SCLK idle LOW, DIN shifted on falling, DOUT sampled on rising.
-// Clock: 27 MHz; SPI ~964 kHz (CLK_DIV=14). Ports unchanged (top_bringup /
+// Clock: 27 MHz; SPI ~1.93 MHz (CLK_DIV=14). Ports unchanged (top_bringup /
 // ttcgs_board instantiate this as-is).
 
 module ads114s08_spi (
@@ -50,7 +50,10 @@ module ads114s08_spi (
 );
 
 // ─── SPI clock divider (VERBATIM original) ─────────────────────────────────────
-localparam CLK_DIV = 14;            // 27 MHz / 28 = ~964 kHz
+// SCLK period is CLK_DIV system clocks (counter wraps at CLK_DIV, falling
+// strobe at CLK_DIV/2) -- NOT 2*CLK_DIV. This comment said 964 kHz by
+// dividing by 28; corrected 2026-08-07 against a logic-analyser capture.
+localparam CLK_DIV = 14;            // 27 MHz / 14 = ~1.93 MHz
 reg [4:0]  clk_cnt;
 reg        sclk_en;                 // rising-edge strobe
 reg        sclk_fall;               // falling-edge strobe
