@@ -54,11 +54,11 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">Physical Constraints File</td>
-<td>C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\dual_bringup.cst</td>
+<td>C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\inausis.cst</td>
 </tr>
 <tr>
 <td class="label">Timing Constraints File</td>
-<td>C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\bringup.sdc</td>
+<td>C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\board.sdc</td>
 </tr>
 <tr>
 <td class="label">Tool Version</td>
@@ -78,7 +78,7 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">Created Time</td>
-<td>Sat Aug  1 11:43:43 2026
+<td>Sat Aug  8 17:49:19 2026
 </td>
 </tr>
 <tr>
@@ -396,10 +396,10 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 <tr>
 <td class="label">ldc_clkin</td>
 <td>-</td>
-<td>42/2</td>
+<td>41/2</td>
 <td>Y</td>
 <td>out</td>
-<td>IOB41[B]</td>
+<td>IOB41[A]</td>
 <td>-</td>
 <td>LVCMOS33</td>
 <td>4</td>
@@ -413,113 +413,18 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 <td>3.3</td>
 </tr>
 <tr>
-<td class="label">uart_tx</td>
+<td class="label">line</td>
 <td>-</td>
-<td>17/2</td>
+<td>42/2</td>
 <td>Y</td>
-<td>out</td>
-<td>IOB2[A]</td>
+<td>io</td>
+<td>IOB41[B]</td>
 <td>-</td>
 <td>LVCMOS33</td>
 <td>8</td>
 <td>UP</td>
 <td>NA</td>
-<td>NA</td>
-<td>OFF</td>
-<td>NA</td>
-<td>NA</td>
-<td>NA</td>
-<td>3.3</td>
-</tr>
-<tr>
-<td class="label">gnd_ads</td>
-<td>-</td>
-<td>39/2</td>
-<td>Y</td>
-<td>out</td>
-<td>IOB33[A]</td>
-<td>-</td>
-<td>LVCMOS33</td>
-<td>8</td>
-<td>UP</td>
-<td>NA</td>
-<td>NA</td>
-<td>OFF</td>
-<td>NA</td>
-<td>NA</td>
-<td>NA</td>
-<td>3.3</td>
-</tr>
-<tr>
-<td class="label">gnd_ldc</td>
-<td>-</td>
-<td>41/2</td>
-<td>Y</td>
-<td>out</td>
-<td>IOB41[A]</td>
-<td>-</td>
-<td>LVCMOS33</td>
-<td>8</td>
-<td>UP</td>
-<td>NA</td>
-<td>NA</td>
-<td>OFF</td>
-<td>NA</td>
-<td>NA</td>
-<td>NA</td>
-<td>3.3</td>
-</tr>
-<tr>
-<td class="label">ads_reset_n</td>
-<td>-</td>
-<td>38/2</td>
-<td>Y</td>
-<td>out</td>
-<td>IOB31[B]</td>
-<td>-</td>
-<td>LVCMOS33</td>
-<td>8</td>
-<td>UP</td>
-<td>NA</td>
-<td>NA</td>
-<td>OFF</td>
-<td>NA</td>
-<td>NA</td>
-<td>NA</td>
-<td>3.3</td>
-</tr>
-<tr>
-<td class="label">ldo_en</td>
-<td>-</td>
-<td>37/2</td>
-<td>Y</td>
-<td>out</td>
-<td>IOB31[A]</td>
-<td>-</td>
-<td>LVCMOS33</td>
-<td>8</td>
-<td>UP</td>
-<td>NA</td>
-<td>NA</td>
-<td>OFF</td>
-<td>NA</td>
-<td>NA</td>
-<td>NA</td>
-<td>3.3</td>
-</tr>
-<tr>
-<td class="label">ads_clk</td>
-<td>-</td>
-<td>36/2</td>
-<td>Y</td>
-<td>out</td>
-<td>IOB29[B]</td>
-<td>GCLKC_4</td>
-<td>LVCMOS33</td>
-<td>8</td>
-<td>UP</td>
-<td>NA</td>
-<td>NA</td>
+<td>NONE</td>
 <td>OFF</td>
 <td>NA</td>
 <td>NA</td>
@@ -906,16 +811,16 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">17/2</td>
-<td>uart_tx</td>
-<td>out</td>
+<td>-</td>
+<td>in</td>
 <td>IOB2[A]</td>
 <td>-</td>
 <td>LVCMOS33</td>
-<td>8</td>
+<td>NA</td>
 <td>UP</td>
+<td>ON</td>
+<td>NONE</td>
 <td>NA</td>
-<td>NA</td>
-<td>OFF</td>
 <td>NA</td>
 <td>NA</td>
 <td>NA</td>
@@ -1161,16 +1066,16 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">36/2</td>
-<td>ads_clk</td>
-<td>out</td>
+<td>-</td>
+<td>in</td>
 <td>IOB29[B]</td>
 <td>GCLKC_4</td>
 <td>LVCMOS33</td>
-<td>8</td>
+<td>NA</td>
 <td>UP</td>
+<td>ON</td>
+<td>NONE</td>
 <td>NA</td>
-<td>NA</td>
-<td>OFF</td>
 <td>NA</td>
 <td>NA</td>
 <td>NA</td>
@@ -1178,16 +1083,16 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">37/2</td>
-<td>ldo_en</td>
-<td>out</td>
+<td>-</td>
+<td>in</td>
 <td>IOB31[A]</td>
 <td>-</td>
 <td>LVCMOS33</td>
-<td>8</td>
+<td>NA</td>
 <td>UP</td>
+<td>ON</td>
+<td>NONE</td>
 <td>NA</td>
-<td>NA</td>
-<td>OFF</td>
 <td>NA</td>
 <td>NA</td>
 <td>NA</td>
@@ -1195,16 +1100,16 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">38/2</td>
-<td>ads_reset_n</td>
-<td>out</td>
+<td>-</td>
+<td>in</td>
 <td>IOB31[B]</td>
 <td>-</td>
 <td>LVCMOS33</td>
-<td>8</td>
+<td>NA</td>
 <td>UP</td>
+<td>ON</td>
+<td>NONE</td>
 <td>NA</td>
-<td>NA</td>
-<td>OFF</td>
 <td>NA</td>
 <td>NA</td>
 <td>NA</td>
@@ -1212,16 +1117,16 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">39/2</td>
-<td>gnd_ads</td>
-<td>out</td>
+<td>-</td>
+<td>in</td>
 <td>IOB33[A]</td>
 <td>-</td>
 <td>LVCMOS33</td>
-<td>8</td>
+<td>NA</td>
 <td>UP</td>
+<td>ON</td>
+<td>NONE</td>
 <td>NA</td>
-<td>NA</td>
-<td>OFF</td>
 <td>NA</td>
 <td>NA</td>
 <td>NA</td>
@@ -1246,12 +1151,12 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">41/2</td>
-<td>gnd_ldc</td>
+<td>ldc_clkin</td>
 <td>out</td>
 <td>IOB41[A]</td>
 <td>-</td>
 <td>LVCMOS33</td>
-<td>8</td>
+<td>4</td>
 <td>UP</td>
 <td>NA</td>
 <td>NA</td>
@@ -1263,15 +1168,15 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">42/2</td>
-<td>ldc_clkin</td>
-<td>out</td>
+<td>line</td>
+<td>io</td>
 <td>IOB41[B]</td>
 <td>-</td>
 <td>LVCMOS33</td>
-<td>4</td>
+<td>8</td>
 <td>UP</td>
 <td>NA</td>
-<td>NA</td>
+<td>NONE</td>
 <td>OFF</td>
 <td>NA</td>
 <td>NA</td>

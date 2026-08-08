@@ -65,28 +65,43 @@ Status codes follow the manuscripts: **D** designed · **R** RTL implemented ·
 |---|---|
 | Full bidirectional datapath (`ttcgs_sys`) | **R** — RTL complete |
 | Simulation vs bit-exact fixed-point golden model | **V** — 12/12 regression pass |
-| Synthesis, place & route, timing closure | **V** — but see the caveat below |
+| Synthesis, place & route, timing closure | **V** — re-run 2026-08-08, reports committed |
 | Streaming real samples from both converters | **V** |
 | Measured DoG waveforms under controlled loading | **B** |
 
 Post-route on GW1NR-LV9QN88PC6/I5 at the native 27 MHz crystal (no PLL):
 
 ```
-3334 logic cells   2107 registers   5 BSRAM   4 DSP
-Fmax 45.6 MHz      setup/hold violations: 0
+3400 logic cells   2124 registers   5 BSRAM   4 DSP
+Fmax 43.9 MHz      setup/hold violations: 0
 ```
 
-> **Reported, but not evidenced by anything committed here.** The `ttcgs_board`
-> place-and-route output was overwritten by later bring-up builds — Gowin writes
-> every target into one `impl/` directory, so synthesising a different top
-> silently destroys the previous target's reports. What is in
-> `CODE/V1/02_rtl_production/impl/pnr/` is a `top_dual` bring-up run from
-> 2026-08-01 (Logic 1000/8640, Register 633/6693), a different design entirely.
-> See [impl/README.md](CODE/V1/02_rtl_production/impl/README.md) for how to
-> regenerate the real run.
+Re-run 2026-08-08 against `inausis.cst` + `board.sdc`, no errors or warnings; the
+full reports are committed in
+[`CODE/V1/02_rtl_production/impl/`](CODE/V1/02_rtl_production/impl).
+
+> An earlier version of this table quoted **3334 / 2107 / 45.6 MHz** from a run
+> whose output a later bring-up build had overwritten — Gowin writes every target
+> into one `impl/` directory, so synthesising a different top silently destroys
+> the previous target's reports. Those figures turned out to be substantially
+> right: BSRAM, DSP, violation count and power reproduced exactly, while logic
+> and registers moved under 2% and Fmax by 3.7% as the RTL grew. They are
+> superseded rather than withdrawn. **Cite the numbers above.**
 
 The reverse channel costs **+274 logic cells (+10.6%)** over the forward-only
-datapath — closing the inference-to-sensing loop is essentially free.
+datapath — closing the inference-to-sensing loop is essentially free. Both halves
+of that comparison were re-synthesised 2026-08-08:
+
+| | Logic | FF | BSRAM |
+|---|---:|---:|---:|
+| `ttcgs_top` — forward only | 2585 | 1501 | 3 |
+| `ttcgs_sys` — full bidirectional | 2859 | 1641 | 5 |
+| difference | **+274 (+10.6%)** | +140 (+9.3%) | +2 |
+
+Synthesis fits, not place-and-route. Unlike the board-level figures above, these
+did not move at all from the earlier run — `ttcgs_top` and `ttcgs_sys` contain no
+converter drivers, so the SPI-core changes that shifted the board numbers do not
+reach them.
 
 Fixed-point analysis: Q15 coefficients with a 39-bit accumulator preserve the
 subtractive cancellation inherent to a difference of Gaussians at **53.3 dB**
@@ -94,8 +109,9 @@ subtractive cancellation inherent to a difference of Gaussians at **53.3 dB**
 differential, the causal-Gaussian kernel gives **≈12 dB additional attenuation at
 300 Hz** with no sidelobe ripple.
 
-Power is projected, not measured: ~23 mW analog + ~36 mW FPGA core
-(post-route Gowin Power Analyzer) ≈ **60 mW design power**. The Tang Nano 9K
+Power is projected, not measured: ~23 mW analog + **36.5 mW FPGA core**
+(post-route Gowin Power Analyzer: 26.7 mW quiescent + 9.8 mW dynamic, junction
+25.8 °C) ≈ **60 mW design power**. The Tang Nano 9K
 development board adds ~250 mW of non-design overhead (USB bridge, LEDs,
 on-board regulators), so a measured-context upper bound is ≈0.27 W.
 
@@ -104,7 +120,7 @@ on-board regulators), so a measured-context upper bound is ≈0.27 W.
 | Item | State |
 |---|---|
 | ADS114S08 link (register read-back + write/read-back) | **V** |
-| ADS114S08 streaming 16-bit signed conversions | **V** — but at ~48 SPS/channel, not the specified 1 kSPS; see [SAMPLE_RATE.md](CODE/V1/SAMPLE_RATE.md) |
+| ADS114S08 streaming 16-bit signed conversions | **V** — but at 159 SPS/channel (logic-analyser measured), not the specified 1 kSPS; see [SAMPLE_RATE.md](CODE/V1/SAMPLE_RATE.md) |
 | LDC1101 link (CHIP_ID 0xD4, WREG/RREG round-trip) | **V** |
 | LC tank oscillating, stable L against ±2 LSB baseline | **V** |
 | Bare-coil material discrimination by sign of ΔL | **V** |

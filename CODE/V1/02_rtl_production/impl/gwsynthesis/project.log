@@ -1,43 +1,53 @@
 GowinSynthesis start
 Running parser ...
-Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\crc16_ccitt.v'
-Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_enc.v'
-Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_tx.v'
-Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_rx.v'
-Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v'
-Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dog_fir_multi.v'
-Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\frame_packer.v'
-Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dsp_chain.v'
-Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\lut_parser.v'
-Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\halfduplex_ctrl.v'
-Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\ttcgs_sys.v'
-Compiling module 'ttcgs_sys'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\ttcgs_sys.v":26)
-Compiling module 'dsp_chain'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dsp_chain.v":19)
-Compiling module 'dog_fir_multi'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dog_fir_multi.v":39)
-Extracting RAM for identifier 'coef_rom'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dog_fir_multi.v":69)
-Extracting RAM for identifier 'sbuf'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dog_fir_multi.v":81)
-WARN  (EX3988) : Cannot open file 'dog_coeffs.mem'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dog_fir_multi.v":70)
-WARN  (EX3791) : Expression size 24 truncated to fit in target size 16("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dog_fir_multi.v":163)
-WARN  (EX3791) : Expression size 6 truncated to fit in target size 5("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dsp_chain.v":121)
-WARN  (EX3791) : Expression size 6 truncated to fit in target size 5("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\dsp_chain.v":130)
-Compiling module 'zscore_flag_multi'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v":38)
-Extracting RAM for identifier 'cal_sum'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v":69)
-Extracting RAM for identifier 'cal_sumsq'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v":70)
-Extracting RAM for identifier 'threshold'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v":71)
-Extracting RAM for identifier 'mu'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v":72)
-Extracting RAM for identifier 'roc_mem'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v":73)
-WARN  (EX3791) : Expression size 10 truncated to fit in target size 9("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\zscore_flag_multi.v":96)
-Compiling module 'frame_packer'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\frame_packer.v":33)
-Compiling module 'crc16_ccitt'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\crc16_ccitt.v":17)
-Compiling module 'halfduplex_ctrl'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\halfduplex_ctrl.v":27)
-Compiling module 'manchester_tx'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_tx.v":21)
-Extracting RAM for identifier 'pbuf'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_tx.v":42)
-Compiling module 'manchester_enc'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_enc.v":20)
-Compiling module 'manchester_rx'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\manchester_rx.v":20)
-Compiling module 'lut_parser'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\lut_parser.v":27)
-Extracting RAM for identifier 'buf_dim'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\lut_parser.v":51)
-Extracting RAM for identifier 'buf_thr'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\lut_parser.v":52)
-NOTE  (EX0101) : Current top module is "ttcgs_sys"
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\crc16_ccitt.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\manchester_enc.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\manchester_tx.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\manchester_rx.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\zscore_flag_multi.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\dog_fir_multi.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\frame_packer.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\dsp_chain.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\lut_parser.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\halfduplex_ctrl.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\ttcgs_sys.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\ads114s08_spi.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\ldc1101_spi.v'
+Analyzing Verilog file 'C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\ttcgs_board.v'
+WARN  (EX3073) : Port 'status' remains unconnected for this instance("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\ttcgs_board.v":58)
+Compiling module 'ttcgs_board'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\ttcgs_board.v":22)
+Compiling module 'ldc1101_spi'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\ldc1101_spi.v":31)
+Compiling module 'ads114s08_spi'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\ads114s08_spi.v":32)
+Extracting RAM for identifier 'mux_table'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\ads114s08_spi.v":97)
+WARN  (EX3791) : Expression size 9 truncated to fit in target size 8("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\ads114s08_spi.v":82)
+WARN  (EX3791) : Expression size 32 truncated to fit in target size 6("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\ads114s08_spi.v":125)
+WARN  (EX3791) : Expression size 32 truncated to fit in target size 6("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\ads114s08_spi.v":142)
+Compiling module 'ttcgs_sys'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\ttcgs_sys.v":26)
+Compiling module 'dsp_chain'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\dsp_chain.v":19)
+Compiling module 'dog_fir_multi'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\dog_fir_multi.v":39)
+Extracting RAM for identifier 'coef_rom'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\dog_fir_multi.v":69)
+Extracting RAM for identifier 'sbuf'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\dog_fir_multi.v":81)
+WARN  (EX3791) : Expression size 24 truncated to fit in target size 16("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\dog_fir_multi.v":163)
+WARN  (EX3791) : Expression size 6 truncated to fit in target size 5("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\dsp_chain.v":121)
+WARN  (EX3791) : Expression size 6 truncated to fit in target size 5("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\dsp_chain.v":130)
+Compiling module 'zscore_flag_multi'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\zscore_flag_multi.v":33)
+Extracting RAM for identifier 'cal_sum'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\zscore_flag_multi.v":64)
+Extracting RAM for identifier 'cal_sumsq'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\zscore_flag_multi.v":65)
+Extracting RAM for identifier 'threshold'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\zscore_flag_multi.v":66)
+Extracting RAM for identifier 'mu'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\zscore_flag_multi.v":67)
+Extracting RAM for identifier 'roc_mem'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\zscore_flag_multi.v":68)
+WARN  (EX3791) : Expression size 10 truncated to fit in target size 9("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\zscore_flag_multi.v":91)
+Compiling module 'frame_packer'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\frame_packer.v":33)
+Compiling module 'crc16_ccitt'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\crc16_ccitt.v":17)
+Compiling module 'halfduplex_ctrl'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\halfduplex_ctrl.v":27)
+Compiling module 'manchester_tx'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\manchester_tx.v":21)
+Extracting RAM for identifier 'pbuf'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\manchester_tx.v":42)
+Compiling module 'manchester_enc'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\manchester_enc.v":20)
+Compiling module 'manchester_rx'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\manchester_rx.v":20)
+Compiling module 'lut_parser'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\lut_parser.v":27)
+Extracting RAM for identifier 'buf_dim'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\lut_parser.v":51)
+Extracting RAM for identifier 'buf_thr'("C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\lut_parser.v":52)
+NOTE  (EX0101) : Current top module is "ttcgs_board"
 [5%] Running netlist conversion ...
 Running device independent optimization ...
 [10%] Optimizing Phase 0 completed
@@ -54,6 +64,6 @@ Running technical mapping ...
 [75%] Tech-Mapping Phase 2 completed
 [80%] Tech-Mapping Phase 3 completed
 [90%] Tech-Mapping Phase 4 completed
-[95%] Generate netlist file "C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\impl\gwsynthesis\project.vg" completed
-[100%] Generate report file "C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\02_rtl_production\impl\gwsynthesis\project_syn.rpt.html" completed
+[95%] Generate netlist file "C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\impl\gwsynthesis\project.vg" completed
+[100%] Generate report file "C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\impl\gwsynthesis\project_syn.rpt.html" completed
 GowinSynthesis finish

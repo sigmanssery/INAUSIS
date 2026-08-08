@@ -65,11 +65,11 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">Physical Constraints File</td>
-<td>C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\dual_bringup.cst</td>
+<td>C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\inausis.cst</td>
 </tr>
 <tr>
 <td class="label">Timing Constraints File</td>
-<td>C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\bringup.sdc</td>
+<td>C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\board.sdc</td>
 </tr>
 <tr>
 <td class="label">Tool Version</td>
@@ -89,7 +89,7 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">Created Time</td>
-<td>Sat Aug  1 11:43:43 2026
+<td>Sat Aug  8 17:49:19 2026
 </td>
 </tr>
 <tr>
@@ -161,15 +161,15 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 <table class="summary_table">
 <tr>
 <td class="label">Total Power (mW)</td>
-<td>27.665</td>
+<td>36.521</td>
 </tr>
 <tr>
 <td class="label">Quiescent Power (mW)</td>
-<td>26.884</td>
+<td>26.677</td>
 </tr>
 <tr>
 <td class="label">Dynamic Power (mW)</td>
-<td>0.781</td>
+<td>9.844</td>
 </tr>
 <tr>
 <td class="label">Psram Power (mW)</td>
@@ -180,7 +180,7 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 <table class="summary_table">
 <tr>
 <td class="label">Junction Temperature</td>
-<td>25.559</td>
+<td>25.750</td>
 </tr>
 <tr>
 <td class="label">Theta JA</td>
@@ -188,7 +188,7 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">Max Allowed Ambient Temperature</td>
-<td>84.441</td>
+<td>84.250</td>
 </tr>
 </table>
 <h2><a name="Supply_Summary">Supply Information:</a></h2>
@@ -203,30 +203,30 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 <tr>
 <td>VCC</td>
 <td>1.200</td>
-<td>0.175</td>
-<td>3.507</td>
-<td>4.418</td>
+<td>7.738</td>
+<td>3.504</td>
+<td>13.490</td>
 </tr>
 <tr>
 <td>VCCX</td>
 <td>3.300</td>
-<td>0.090</td>
+<td>0.088</td>
 <td>5.000</td>
-<td>16.795</td>
+<td>16.789</td>
 </tr>
 <tr>
 <td>VCCIO18</td>
 <td>1.800</td>
 <td>0.013</td>
-<td>0.353</td>
-<td>0.659</td>
+<td>0.457</td>
+<td>0.846</td>
 </tr>
 <tr>
 <td>VCCIO33</td>
 <td>3.300</td>
-<td>0.077</td>
-<td>1.679</td>
-<td>5.793</td>
+<td>0.075</td>
+<td>1.561</td>
+<td>5.396</td>
 </tr>
 </table>
 <h1><a name="Detail">Power Details</a></h1>
@@ -240,15 +240,27 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td>Logic</td>
-<td>0.101</td>
+<td>0.428</td>
 <td>NA</td>
-<td>3.375</td>
+<td>3.374</td>
 </tr>
 <tr>
 <td>IO</td>
-<td>7.733
-<td>7.054
-<td>3.528
+<td>7.252
+<td>6.589
+<td>4.500
+</tr>
+<tr>
+<td>BSRAM</td>
+<td>4.449
+<td>NA</td>
+<td>NA</td>
+</tr>
+<tr>
+<td>DSP</td>
+<td>4.301
+<td>NA</td>
+<td>2.195
 </tr>
 </table>
 <h2><a name="By_Hierarchy">Power By Hierarchy:</a></h2>
@@ -259,21 +271,65 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 <th class="label">Block Dynamic Power(mW)</th>
 </tr>
 <tr>
-<td>top_dual</td>
-<td>0.101</td>
-<td>0.101(0.039)</td>
+<td>ttcgs_board</td>
+<td>9.179</td>
+<td>9.179(9.142)</td>
 <tr>
-<td>top_dual/u_ads/</td>
+<td>ttcgs_board/u_ads/</td>
 <td>0.015</td>
 <td>0.015(0.000)</td>
 <tr>
-<td>top_dual/u_ldc/</td>
-<td>0.020</td>
-<td>0.020(0.000)</td>
+<td>ttcgs_board/u_ldc/</td>
+<td>0.019</td>
+<td>0.019(0.000)</td>
 <tr>
-<td>top_dual/u_uart/</td>
+<td>ttcgs_board/u_sys/</td>
+<td>9.109</td>
+<td>9.109(9.108)</td>
+<tr>
+<td>ttcgs_board/u_sys/u_chain/</td>
+<td>6.734</td>
+<td>6.734(6.715)</td>
+<tr>
+<td>ttcgs_board/u_sys/u_chain/u_dog/</td>
+<td>3.325</td>
+<td>3.325(0.000)</td>
+<tr>
+<td>ttcgs_board/u_sys/u_chain/u_flag/</td>
+<td>3.390</td>
+<td>3.390(0.000)</td>
+<tr>
+<td>ttcgs_board/u_sys/u_hd/</td>
+<td>0.037</td>
+<td>0.037(0.022)</td>
+<tr>
+<td>ttcgs_board/u_sys/u_hd/u_rcrc/</td>
+<td>0.002</td>
+<td>0.002(0.000)</td>
+<tr>
+<td>ttcgs_board/u_sys/u_hd/u_rx/</td>
+<td>0.006</td>
+<td>0.006(0.000)</td>
+<tr>
+<td>ttcgs_board/u_sys/u_hd/u_tx/</td>
+<td>0.013</td>
+<td>0.013(0.005)</td>
+<tr>
+<td>ttcgs_board/u_sys/u_hd/u_tx/u_enc/</td>
 <td>0.005</td>
 <td>0.005(0.000)</td>
+<tr>
+<td>ttcgs_board/u_sys/u_lp/</td>
+<td>2.302</td>
+<td>2.302(0.000)</td>
+<tr>
+<td>ttcgs_board/u_sys/u_pk/</td>
+<td>0.035</td>
+<td>0.035(0.002)</td>
+<tr>
+<td>ttcgs_board/u_sys/u_pk/u_crc/</td>
+<td>0.002</td>
+<td>0.002(0.000)</td>
 </table>
 <h2><a name="By_Clock_Domain">Power By Clock Domain:</a></h2>
 <table class="detail_table">
@@ -285,7 +341,12 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 <tr>
 <td>clk27</td>
 <td>27.000</td>
-<td>0.102</td>
+<td>9.181</td>
+</tr>
+<tr>
+<td>NO CLOCK DOMAIN</td>
+<td>0.000</td>
+<td>0.000</td>
 </tr>
 </table>
 </div><!-- content -->

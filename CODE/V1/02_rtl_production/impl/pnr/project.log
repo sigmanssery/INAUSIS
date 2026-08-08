@@ -1,7 +1,7 @@
 Reading netlist file: "C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\impl\gwsynthesis\project.vg"
 Parsing netlist file "C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\impl\gwsynthesis\project.vg" completed
 Processing netlist completed
-Reading constraint file: "C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\dual_bringup.cst"
+Reading constraint file: "C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\inausis.cst"
 Physical Constraint parsed completed
 Running placement......
 [10%] Placement Phase 0 completed
@@ -25,5 +25,5 @@ Generate file "C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\go
 Generate file "C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\impl\pnr\project.rpt.html" completed
 Generate file "C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\impl\pnr\project.rpt.txt" completed
 Generate file "C:\Users\Admin\Desktop\INAUSIS\INAUSIS_package\INAUSIS_package\gowin_syn\impl\pnr\project.tr.html" completed
-Sat Aug  1 11:43:43 2026
+Sat Aug  8 17:49:20 2026
 
