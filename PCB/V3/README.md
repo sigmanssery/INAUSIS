@@ -108,7 +108,31 @@ at ~1361 counts — **2.1% of full scale**.
 Same schematic, same parts, a larger outline and full instrumentation. Nothing here
 changes what the board *does*; all of it changes how fast a problem can be found.
 
-### 1. Probe access
+### 1. Do not bury the FPGA headers
+
+A larger board stacked on the Tang Nano covers its pin headers, and roughly thirty
+I/O are currently unused. Losing access to them would trade one problem for another.
+
+Split them by whether they are carrying a signal:
+
+| Pins | Where they go | Why |
+|---|---|---|
+| **idle (~30)** | a labelled expansion header, every pin brought out | nothing drives them, so there is no signal-integrity cost |
+| **in use (~11)** | already on **J_DIG** | that header is a deliberate, ground-flanked measurement stub |
+
+So a full fan-out is not needed — only the idle pins need re-exposing.
+
+This ends up better than the original rather than a workaround. The Tang Nano's own
+silkscreen is cramped enough that identifying pins during the logic-analyser session
+meant counting header positions by hand. A fan-out on your own board can print
+`P51 / dbg_drdy` beside the pin.
+
+> ⚠ **Do not stub CLKIN, or anything routed near the tank.** A fan-out is an open
+> stub — an antenna and a reflection point on precisely the signal being kept quiet.
+> The rule: fan out idle pins freely; signals in use go only to J_DIG, with the
+> branch taken **after** the series resistor and kept under ~10 mm.
+
+### 2. Probe access
 
 The logic analyser available to this project has dupont leads, not probes, so test
 access has to be **2.54 mm pin header**, and every signal needs a ground beside it.
@@ -122,7 +146,7 @@ Two double-row headers, bottom row entirely ground:
 > ⚠ The AINCOM test point must be a **high-impedance measurement stub only**. If it
 > becomes a second return path it destroys the entire point of the sense line.
 
-### 2. Series resistor positions — 11, all 0805
+### 3. Series resistor positions — 11, all 0805
 
 Every FPGA↔peripheral line gets one, **default 470 Ω**, footprint present so 0 Ω or
 any other value can be fitted later:
@@ -154,7 +178,7 @@ Dissipation is a non-issue and is **independent of R** — the energy per edge i
 > end protects the LDC from incoming noise but leaves the whole trace switching at
 > full rate.
 
-### 3. Power architecture
+### 4. Power architecture
 
 Directly derived from the V1 LT1763 failure, where one regulator feeding both chips
 lost phase margin under load and oscillated audibly.
@@ -172,15 +196,28 @@ analog power as *"~23 mW, projected, not measured."* At 7 mA across 1 Ω that is
 7 mV, which any multimeter resolves to ±0.1 mA. **It turns a projection into a
 measurement.**
 
-### 4. Divider and buffer flexibility
+### 5. Divider and buffer flexibility
 
 - **Three parallel 0805 positions per channel** so 100 kΩ / 1 MΩ / 10 MΩ can be
   swapped without a respin — the material's working resistance is not settled.
-- **A quad op-amp footprint (SOIC-14, not TSSOP)** with 0 Ω bypass links: populate
-  it for a buffered front end, or fit the links for the present direct connection.
-  Both architectures on one board.
+- **A quad op-amp in a DIP-14 socket**, with 0 Ω bypass links: populate it for a
+  buffered front end, or fit the links for the present direct connection. Both
+  architectures on one board.
 
-### 5. Tank access
+A socket, and the only through-hole active part on the board, because this is the
+component most likely to need swapping — MCP6004, TLV2374 and OPA4197 differ
+substantially in input bias current, noise, and how close to the rails they actually
+go, and which suits this sensor is not yet known. Socket insulation resistance is
+>10¹² Ω against a 1 MΩ source, six orders of magnitude away from mattering.
+
+> **Why nothing else is through-hole.** The ADS114S08, LDC1101 and LDLN025 have no
+> through-hole option at all, so the board needs SMT assembly whatever else is done
+> — which removes the usual argument for DIP, since you cannot avoid the reflow
+> step anyway. Through-hole passives would also put several millimetres of exposed
+> lead on the high-impedance AIN nodes, where the concern is capacitive pickup area
+> rather than lead inductance.
+
+### 6. Tank access
 
 - INA / INB brought out to a 2-pin header so the oscillation can actually be scoped.
 
@@ -188,23 +225,32 @@ measurement.**
 > by ~0.9%. Fine for diagnosis; **do not derive calibration constants from readings
 > taken with a probe attached.**
 
-### 6. External sensor input
+### 7. External sensor input
 
 A 2.54 mm header or screw terminal wired in parallel with the FPC's AIN group, so a
 commercial FSR can be connected directly without going through the sensor board.
 This is what makes the open question in the last section answerable with hardware
 that already exists.
 
-### 7. Mechanical and practical
+### 8. Mechanical and practical
 
 - **0805 passives throughout** — hand-reworkable
 - silkscreen carries **designator *and* value**
-- mounting holes at all four corners
+- **mounting holes at all four corners, used with standoffs.** A 50 mm board
+  cantilevered on 2.54 mm header pins bends them, and bent pins fail
+  intermittently — the hardest fault to diagnose, and one this project has already
+  met once on a CLKIN wire that worked loose. Let the headers carry signal and the
+  standoffs carry weight.
 - pin-1 and polarity markings
 - do not cram: the entire purpose of this board is that it is easy to measure and
   easy to change
 
-### 8. Teardrops
+> If the board later grows past ~60–80 mm, replace the stack with a **short IDC
+> ribbon** and stand the compute board beside the FPGA. That is not a return to the
+> dupont harness that caused the original problems: an IDC ribbon is mechanically
+> latched, has fixed pin order, and can interleave grounds.
+
+### 9. Teardrops
 
 Apply to all pads and vias — **75% width / 35% length** is appropriately
 conservative. The mechanical case is real here: this board is a shield that gets
