@@ -161,6 +161,20 @@ meant counting header positions by hand. A fan-out on your own board can print
 > The rule: fan out idle pins freely; signals in use go only to J_DIG, with the
 > branch taken **after** the series resistor and kept under ~10 mm.
 
+**One covered signal gets its own connector: `line`, the Manchester link.** It is
+pin 42 on the left header, so the rule above requires re-exposing it — and it is
+worth four labelled positions rather than a slot on the general expansion header,
+because it is the interface to the downstream consumer:
+
+```
+J_LINK (1×4)     line (P42) · 3V3 · GND · reset
+```
+
+Any MCU dev board connects with four jumper wires. This is what makes the
+closed-loop demonstration in [ROADMAP.md](../../ROADMAP.md) possible without
+committing to an MCU footprint now — and closing that loop is what would take the
+bidirectional datapath from **R** to **V** in the top-level status table.
+
 ### 2. Probe access
 
 The logic analyser available to this project has dupont leads, not probes, so test
@@ -224,6 +238,37 @@ The shunts are worth their board area on their own: the repository currently sta
 analog power as *"~23 mW, projected, not measured."* At 7 mA across 1 Ω that is
 7 mV, which any multimeter resolves to ±0.1 mA. **It turns a projection into a
 measurement.**
+
+#### The incoming supply filter
+
+One ferrite bead on the 5 V as it enters, ahead of both LDOs:
+
+| | |
+|---|---|
+| package | **0805** — matches the rest of the board, better current rating and lower DCR than 0402 |
+| impedance | **600 Ω @ 100 MHz**, the common default and the cheapest to stock |
+| rated current | **≥ 500 mA** against a ~50 mA load — 10× margin |
+| DCR | **≤ 0.15 Ω** → under 10 mV of drop at 50 mA |
+
+**A parallel 0 Ω pad beside it.** Fit the bead, or short it out, and measure the
+difference — which turns "is the bead doing anything?" from an article of faith into
+a two-minute experiment. That is the whole point of this board.
+
+**A Pi filter is not worth building, but leave the pad for one.** The heavy lifting
+is already done by the two separate LDOs: 60–70 dB of PSRR at low frequency, far
+more than any passive network here contributes. A bead adds first-order roll-off
+above where PSRR fades, which is the gap worth covering, and a Pi adds a second
+reactive element — plus an LC resonance that can show *gain* if the bead is still
+inductive rather than resistive at that frequency. That is a classic way to make a
+supply noisier while believing it has been filtered.
+
+More to the point: **the noise that has actually hurt this project was not conducted
+through the 5 V rail.** It was CLKIN coupling into the tank and the ground return
+impedance in §5. A Pi filter addresses neither.
+
+Since `C_IN` already sits downstream of the bead, adding **one unpopulated 0805
+capacitor position upstream** makes the topology a Pi whenever that is wanted. One
+empty pad buys the option; populating it now buys a resonance to think about.
 
 ### 5. Grounding, and the single return pin
 
