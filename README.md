@@ -201,6 +201,14 @@ and hierarchical memory peeks.
 
 ---
 
+## What is deliberately not being done yet
+
+[ROADMAP.md](ROADMAP.md) lists work that has been thought through and deferred, each
+with the condition that would make it worth doing — an MCU closing the Manchester
+loop, a custom flex with a ground plane, a better coil, and the sample-rate decision
+among them. Several share one trigger: measured data from a working analog front
+end, which is also the current bottleneck.
+
 ## Status of this repository
 
 This is a research repository accompanying two manuscripts in preparation. The RTL
