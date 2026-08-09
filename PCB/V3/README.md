@@ -110,17 +110,46 @@ changes what the board *does*; all of it changes how fast a problem can be found
 
 ### 1. Do not bury the FPGA headers
 
-A larger board stacked on the Tang Nano covers its pin headers, and roughly thirty
-I/O are currently unused. Losing access to them would trade one problem for another.
+A larger board stacked on the Tang Nano covers its pin headers. The budget is
+tighter than it looks, so it is worth counting properly.
 
-Split them by whether they are carrying a signal:
+The board breaks out **45 of the 88 package pins**. The left header is 24 pins and
+**every one of them is already committed**:
 
-| Pins | Where they go | Why |
+```
+36 37 38 39 │ 25 26 27 28 29 30 │ 33 34 40 35 41 │ 42 │ 51 53 │ 54 55 56 │ 57 68 69
+ spare/microSD     ADS SPI            LDC SPI      line   mirror   SSPI ✗    mirror
+```
+
+The right header is mixed-voltage, which is the trap:
+
+```
+pos   1 │  2  3  4  5  6  7  8  9 │ 10 11 12 13 14 15 16 17 │ 18 │ 19 20 21 22 │ 23  24
+pin  63 │ 86 85 84 83 82 81 80 79 │ 77 76 75 74 73 72 71 70 │ 5V │ 48 49 31 32 │GND 3V3
+     3.3      <---- 1.8 V ---->         <---- 3.3 V ---->            <- 3.3 V ->
+```
+
+| | Count | Which |
+|---|---:|---|
+| free 3.3 V | **13** | `63 70 71 72 73 74 75 76 77 48 49 31 32` |
+| 1.8 V (bank 3) | 8 | `79–86` — cannot drive a 3.3 V peripheral |
+| free on the left header | **0** | fully committed |
+
+> ⚠ Pins 79–86 sit between two 3.3 V groups on the same header. Any fan-out must
+> label bank voltage per pin, or someone eventually wires a 3.3 V signal into a
+> 1.8 V bank.
+
+**But this revision hands seven pins back.** Two of the left header's commitments
+exist only because the present board lacks the features this one adds:
+
+| Pins | Currently | On this board |
 |---|---|---|
-| **idle (~30)** | a labelled expansion header, every pin brought out | nothing drives them, so there is no signal-integrity cost |
-| **in use (~11)** | already on **J_DIG** | that header is a deliberate, ground-flanked measurement stub |
+| `51 53 57 68 69` | debug mirrors — SPI duplicated onto spare pins because there was nowhere to probe | **J_DIG replaces them; 5 pins returned** |
+| `39 41` | pseudo-grounds, FPGA I/O driven low, because the only real GND is on the far header | **a real ground plane returns 2 more** |
 
-So a full fan-out is not needed — only the idle pins need re-exposing.
+So the working budget is **13 (right header) + 7 (returned) = 20 free 3.3 V pins**,
+and a full fan-out is not needed — only the idle ones need re-exposing, with pins
+still in use going to J_DIG.
 
 This ends up better than the original rather than a workaround. The Tang Nano's own
 silkscreen is cramped enough that identifying pins during the logic-analyser session
@@ -196,7 +225,115 @@ analog power as *"~23 mW, projected, not measured."* At 7 mA across 1 Ω that is
 7 mV, which any multimeter resolves to ±0.1 mA. **It turns a projection into a
 measurement.**
 
-### 5. Divider and buffer flexibility
+### 5. Grounding, and the single return pin
+
+The header exposes exactly **one** ground. Every return current between the two
+boards passes through it, and a large low-impedance plane on the compute board does
+not help, because the bottleneck is the pin, not the plane.
+
+A 2.54 mm header pin, ~10 mm of 0.64 mm² brass through a mated socket:
+
+```
+conductor    rho*L/A = 7e-8 * 0.01 / 4.1e-7   ~  1.7 mohm
+contact      socket spec, typically            <   20 mohm
+                                               ------------
+DC total                                       ~   20 mohm
+inductance   single conductor, large loop      ~   10 nH
+```
+
+**The DC offset does not corrupt the analog measurement.** If the board draws 30 mA
+from the FPGA rail, the supply return develops 0.6 mV across that pin — 8 LSB at
+76 µV/LSB, which sounds alarming. But the ADS references AINCOM, which is a sense
+line to the sensor board's star point, so an offset between the two boards' grounds
+is **common-mode and subtracted**. That is exactly what the AINCOM fix is for.
+
+**The AC behaviour is the real concern**, because `V = L·di/dt`:
+
+| | di/dt | ground bounce |
+|---|---:|---:|
+| CLKIN with the 470 Ω, 7.2 ns edge | ~1e6 A/s | **10 mV** |
+| three SPI lines switching, no series resistors | ~1.2e7 A/s | **120 mV** |
+
+Both sit under LVCMOS33's ~0.4 V noise margin, so the digital link is safe. The LC
+tank is not: it is a high-Q resonator at 2.96 MHz, and ground bounce puts energy
+straight into its band. **This is part of the mechanism behind the 13.5 MHz CLKIN
+failure** — a long, inductive return path makes the whole loop an antenna.
+
+**The structural version of the problem is worse than the pin.** Every ADS and LDC
+signal is on the *left* header and the only ground is on the *right*, so every
+return crosses the entire board. That is why the present design drives pins 39 and
+41 low as pseudo-grounds — it was forced by the header layout, not chosen.
+
+*Measured context, so this is not over-weighted:* the one-hour soak on the dupont
+harness — worse wiring than this board will have — returned **100.000% valid
+samples, L sd 0.647, ADS noise ±1.5 counts**. The ground return is a known
+structural weakness, not a present fault.
+
+**The fix is to stop sending supply current through it.** Give the compute board its
+own supply — an added position on the rail jumper, or its own USB connector — and
+the pin carries only signal return:
+
+```
+from the FPGA rail   30 mA * 20 mohm = 600 uV
+independently fed    ~1 mA * 20 mohm =  20 uV     30x better
+```
+
+No extra component, and the jumper it needs is already in the spec. The 470 Ω series
+resistors and the shared `periph_en` handle the back-powering that two independent
+supplies would otherwise create.
+
+Worth adding as well: a short braid from the compute board's ground to the Tang
+Nano's USB-C or HDMI shell, and mounting both boards to one metal base plate — the
+standoffs in §9 can do double duty.
+
+#### What not to do
+
+Three pieces of conventional advice are wrong here, and one is actively harmful.
+
+**Never put a ferrite bead in the ground path.** The problem just diagnosed is that
+the return is too impedant; a bead adds impedance to exactly that path.
+
+| bead type | DCR | vs the 20 mΩ pin |
+|---|---:|---:|
+| typical 0402, 600 Ω @ 100 MHz | 0.35 Ω | **17× worse** |
+| low-DCR, 120 Ω @ 100 MHz | 0.05 Ω | **2.5× worse** |
+
+**Do not split the plane into AGND and DGND.** The `AGND` / `DGND` pin names on a
+data converter refer to the *die's* internal grounds, not to a requirement for two
+external planes — Kester's MT-031 and Ott's mixed-signal layout work both say so.
+High-frequency return current flows directly beneath its trace because that is the
+lowest-impedance loop; cut the plane and the return has to detour around the gap,
+which multiplies loop area. Any signal crossing a split creates the antenna the
+split was meant to prevent.
+
+**A 0 Ω link between the two halves is only meaningful if you split them**, so it
+does not apply.
+
+#### Where the star point *is* correct
+
+Star grounding is a low-frequency technique — useful below roughly 1 MHz, above
+which plane inductance dominates and return current goes where it likes regardless.
+With 13.5 MHz CLKIN and a 2.96 MHz tank, the RF side needs a solid plane.
+
+But the piezoresistive path is DC to a few hundred Hz, squarely inside where star
+grounding works — and the design already applies it correctly, as the AINCOM sense
+line to the point where the four divider grounds meet. **Both techniques are in use;
+each in the frequency range where it is valid.**
+
+#### Where a ferrite *is* right
+
+On the incoming supply, never on the ground:
+
+```
+5V from header ──[bead]──┬── LDO_ADS ── 3V3_ADS
+                         └── LDO_LDC ── 3V3_LDC
+```
+
+It filters conducted noise from the FPGA side without touching the return path. It
+is a secondary measure, though: the per-chip LDOs already give 60–70 dB of PSRR at
+low frequency, far more than a bead contributes.
+
+### 6. Divider and buffer flexibility
 
 - **Three parallel 0805 positions per channel** so 100 kΩ / 1 MΩ / 10 MΩ can be
   swapped without a respin — the material's working resistance is not settled.
@@ -217,7 +354,7 @@ go, and which suits this sensor is not yet known. Socket insulation resistance i
 > lead on the high-impedance AIN nodes, where the concern is capacitive pickup area
 > rather than lead inductance.
 
-### 6. Tank access
+### 7. Tank access
 
 - INA / INB brought out to a 2-pin header so the oscillation can actually be scoped.
 
@@ -225,14 +362,14 @@ go, and which suits this sensor is not yet known. Socket insulation resistance i
 > by ~0.9%. Fine for diagnosis; **do not derive calibration constants from readings
 > taken with a probe attached.**
 
-### 7. External sensor input
+### 8. External sensor input
 
 A 2.54 mm header or screw terminal wired in parallel with the FPC's AIN group, so a
 commercial FSR can be connected directly without going through the sensor board.
 This is what makes the open question in the last section answerable with hardware
 that already exists.
 
-### 8. Mechanical and practical
+### 9. Mechanical and practical
 
 - **0805 passives throughout** — hand-reworkable
 - silkscreen carries **designator *and* value**
@@ -250,7 +387,7 @@ that already exists.
 > dupont harness that caused the original problems: an IDC ribbon is mechanically
 > latched, has fixed pin order, and can interleave grounds.
 
-### 9. Teardrops
+### 10. Teardrops
 
 Apply to all pads and vias — **75% width / 35% length** is appropriately
 conservative. The mechanical case is real here: this board is a shield that gets
