@@ -46,6 +46,32 @@ is going to be a figure in a manuscript, and not before.
 
 ---
 
+## Stacking compute boards to read several sensor boards
+
+**What.** Several compute boards on one FPGA, each serving its own sensor board,
+sharing one SPI bus.
+
+**Why not now.** Neither manuscript needs it. The open figures — R(P), L(P), RP(P),
+cyclic drift, DoG waveforms — all need **one** good measurement chain, not four.
+
+**What it would take**, worked out so the estimate is not made from scratch later:
+
+- **Four chip selects for the LDC.** The ADS already has a 2×4 selector; the LDC's
+  `CSB` is a single line, so four stacked boards would select every LDC at once and
+  their outputs would collide. The cheap answer is a **74HC138**: three FPGA pins
+  become eight selects, which is exactly 4 boards × 2 chips. CS changes once per
+  transaction, so the decoder's propagation delay is irrelevant at 482 kHz.
+- **DRDY must become timed polling.** The dedicated DRDY pin is driven regardless of
+  CS, so four boards would contend on one net. The 470 Ω series resistors keep that
+  at ~3.3 mA — survivable, not usable. Polling is well founded: the conversion period
+  measures **1572.2 µs with sd 0.4 µs** over 1591 conversions, so a timer tracks it
+  comfortably. This is a pure RTL change and it removes the pin entirely.
+- **`ldc_clkin` tri-state**, if the external clock module is also fitted.
+
+**Trigger.** When a multi-taxel array becomes a figure in a manuscript. The pin
+budget is not the obstacle it first appears — 3 pins, not 8 — but nothing above is
+worth doing before there is something to put in the array.
+
 ## A custom two-layer FPC with a ground plane
 
 **What.** Replace the off-the-shelf FFC with a two-layer flex, one layer a solid

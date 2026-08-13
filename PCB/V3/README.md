@@ -189,15 +189,22 @@ Two double-row headers, bottom row entirely ground:
 > ⚠ The AINCOM test point must be a **high-impedance measurement stub only**. If it
 > becomes a second return path it destroys the entire point of the sense line.
 
-### 3. Series resistor positions — 11, all 0805
+### 3. Series resistor positions
 
-Every FPGA↔peripheral line gets one, **default 470 Ω**, footprint present so 0 Ω or
-any other value can be fitted later:
+**Every FPGA↔peripheral line gets one, populated at 470 Ω.** Twelve of them:
+`SCLK · DIN · DOUT · DRDY · ST · CLK · RESET` to the ADS, and
+`CSB · SCLK · SDI · SDO · CLKIN` to the LDC.
 
-```
-SCLK · DIN · DOUT · CS_ADS · CS_LDC · DRDY
-ADS_RESET · ADS_CLK · LDC_CLKIN · LDO_EN
-```
+**And every fanned-out FPGA pin gets a bare 0805 pad pair**, whether or not
+anything is fitted. Net `NN` on one pad, `NNA` on the other, 1.93 mm apart. Three
+uses from one footprint: fit a resistor, fit 0 Ω, or bridge it with solder. As
+built there are **24 such pairs**, including all eight of the 1.8 V bank pins.
+
+This generalises the rule rather than applying it to a list. The lesson it comes
+from is specific: during the 2026-08-07 logic-analyser session a series resistor
+was wanted on a line that had no pad for one, and the board had **zero** spare
+footprints — 89 paste openings against 89 placed pads. A pad pair on every pin
+costs nothing and means that failure cannot recur on any signal.
 
 **470 Ω is one part number for all of them**, and it is the right value on both
 criteria. As a back-powering limit it caps ESD-diode current at
@@ -444,6 +451,41 @@ teardrops near it. Re-run DRC afterwards — teardrops grow copper, and the 0.5 
 pitch VQFN-32, VSON-10 and FPC footprints are where clearance will be lost first.
 
 ---
+
+### 11. Three sockets that emerged during layout
+
+None of these were in the specification above; all three are better than what it
+asked for, and they are recorded here so the reasoning survives.
+
+**The buffer became a daughterboard.** Rather than an op-amp footprint on the
+compute board, two 6-way headers carry the four channels out and back:
+`A/B/C/D + AINCOM + 5V` on one, `A/B/C/D + AINCOM + GND` on the other. The signal
+path runs FPC → header → module → header → ADS. Populate a module for a buffered
+front end; bridge the headers for the direct connection.
+
+> ⚠ **The module must carry the 100 Ω + 1 nF output network**, not the compute
+> board. It is needed anyway to isolate the op-amp from the ADS's switched-capacitor
+> input and to absorb its sampling transients — and it does a second job for free.
+> The module is powered from 5 V while AVDD is 3.3 V, so during power sequencing an
+> output could sit above `AVDD + 0.3 V` and forward-bias the ADS input protection.
+> The four analog lines carry no series resistance of their own; that 100 Ω caps the
+> fault at `(5 − 3.3 − 0.7)/100 = 10 mA`.
+
+**A socket for an external reference clock.** Four pads — `EN · CLKIN · GND · VCC`
+— let a precision oscillator module drive the LDC's CLKIN instead of the FPGA.
+This is the cheapest route to the accuracy problem in
+[ROADMAP.md](../../ROADMAP.md): TTCGS defines its σ in samples, so oscillator drift
+moves every published passband.
+
+> ⚠ **RTL must tri-state `ldc_clkin` when a module is fitted.** Otherwise the FPGA
+> and the module both drive that net. The 470 Ω keeps the contention at 7 mA — no
+> damage — but the waveform is unusable to both. A `localparam` beside
+> `LDC_CLKIN_SEL` is enough.
+
+**A chip-select selector.** A 2×4 header presents four candidate FPGA pins against
+the ADS's CS; a jumper picks one. Its immediate value has nothing to do with
+stacking: if a pin is later needed elsewhere, or turns out to be damaged, CS moves
+without a respin.
 
 ## The divider change — highest priority, and it is a layout change
 
