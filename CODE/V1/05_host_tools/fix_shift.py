@@ -37,6 +37,10 @@ ap.add_argument("--win", type=int, default=301, help="滾動視窗樣本數（�
 ap.add_argument("--out", default=None, help="輸出 CSV，省略則只印報告")
 ap.add_argument("--floor", type=float, default=200.0,
                 help="低於此值的通道不做還原（訊號太接近零，比值無意義）")
+ap.add_argument("--halved", action="store_true",
+                help="確定性模式：每個樣本都減半了，全部乘 2。"
+                     "dual_orig.fs 在目前接線下是這個狀態（100%% 單一群）。"
+                     "用已知電阻確認過再開，開錯會讓所有電阻差兩倍。")
 a = ap.parse_args()
 
 d = pd.read_csv(a.csv)
@@ -52,6 +56,17 @@ for c in CH:
     if v.abs().median() < a.floor:
         report.append((c, 0, 0.0, 0, "訊號接近零，跳過還原"))
         d[c + "_fix"] = v
+        continue
+
+    if a.halved:
+        # 確定性模式：整批都減半了，沒有「上面那群」可以當基準。
+        over = int((v > 16383).sum())
+        note = ""
+        if over:
+            note = (f"*** {over} 筆 >16383 — 乘 2 會溢位，這批不是單純的全體減半，"
+                    "不要用 --halved")
+        d[c + "_fix"] = v * 2
+        report.append((c, len(v.dropna()), 100.0, over, note or "全體 ×2"))
         continue
 
     # 正確群在上面 -> 70 百分位是穩定的基準
@@ -78,6 +93,19 @@ for c in CH:
 print("通道        還原筆數    比例     殘留異常   備註")
 for c, n, pct, resid, note in report:
     print(f"{c} {AIN[c]:<10} {n:6d}  {pct:5.1f}%   {resid:6d}   {note}")
+
+if not a.halved:
+    # 混合狀態下減半約佔 44%。明顯低於這個數，就分不出「沒有位移」和「全體減半」。
+    silent = [c for c, n, pct, _, _ in report
+              if pct < 25.0 and d[c].abs().median() >= a.floor]
+    if silent:
+        print(f"""
+⚠  {', '.join(silent)} 一筆都沒還原。這有兩種可能，而這個方法分不出來：
+     (a) 本來就沒有位移 —— 那很好，直接用
+     (b) 整批都減半了 —— 那沒有「上面那群」可以當基準，本工具會靜靜地
+         什麼都不做，然後給你兩倍的電阻
+   dual_orig.fs 在目前接線下就是 (b)：100 kΩ 讀到 1604 而不是 3208。
+   拿已知電阻量一次就能分辨；確認是 (b) 就加 --halved。""")
 
 print("\n每個通道還原後的電阻（中位）")
 for c in CH:
