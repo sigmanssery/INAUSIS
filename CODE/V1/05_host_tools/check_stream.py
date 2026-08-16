@@ -48,9 +48,49 @@ print(f"{len(buf)} bytes, {lines} 筆已解析, 非可列印 {bad} ({100*bad/max
 if not lines:
     print("*** 解析不到任何資料行 — 鮑率或 bitstream 不對"); sys.exit(1)
 
+# ADS 的轉換結果是 16-bit 有號的；上面照原樣存無號，這裡只在顯示 CH 時轉補數。
+# ID/ST/RP/L 維持無號（它們本來就是無號的暫存器內容）。
+def s16(v):
+    return v - 65536 if v >= 32768 else v
+
+def shift_report(sv):
+    """一位元位移偵測。以最常見值為基準，數有多少樣本落在它的一半或兩倍。
+
+    範圍與相異值個數看不出位移 —— 穩定的固定電阻本來就只有幾個相異值，
+    而位移群跟正常群會同時落在範圍裡。這個檢查是唯一直接的判準。
+    """
+    c = collections.Counter(sv)
+    ref = c.most_common(1)[0][0]
+    if abs(ref) < 50:                      # 接近 0 時比值無意義
+        return None, ""
+    tol = 0.03
+    half = sum(n for v, n in c.items() if abs(v - ref / 2) < tol * abs(ref))
+    dbl  = sum(n for v, n in c.items() if abs(v - ref * 2) < tol * abs(ref) * 2)
+    tot  = len(sv)
+    if not (half or dbl):
+        return ref, "  位移 0 ✓"
+    parts = []
+    if half: parts.append(f"減半 {half} ({100*half/tot:.1f}%)")
+    if dbl:  parts.append(f"加倍 {dbl} ({100*dbl/tot:.1f}%)")
+    return ref, "  *** 位元位移: " + " / ".join(parts)
+
 for k in ("CH0", "CH1", "CH2", "CH3"):
     if vals[k]:
-        print(f"{k}: n={len(vals[k])}  範圍 {min(vals[k])}~{max(vals[k])}")
+        sv = [s16(v) for v in vals[k]]
+        n_uniq = len(set(sv))
+        frozen = "   *** 只有一個值 — ADC 沒在轉換" if n_uniq == 1 else ""
+        rail   = sum(1 for v in sv if abs(v) > 32000)
+        rtxt   = f"   撞軌 {rail} ({100*rail/len(sv):.1f}%)" if rail else ""
+        print(f"{k}: n={len(sv)}  範圍 {min(sv)}~{max(sv)}  相異 {n_uniq}{rtxt}{frozen}")
+        top = collections.Counter(sv).most_common(6)
+        print("      最常見 " + "  ".join(f"{v}x{n}" for v, n in top))
+        ref, msg = shift_report(sv)
+        if msg:
+            print("     " + msg)
+
+print("\n  『範圍』和『相異值』看不出位元位移 —— 要看上面那行『位移』。")
+print("  接固定電阻時相異值本來就少（訊號穩定），那不是故障。")
+print("  真正的故障樣子：單一值 = 驅動停擺；位移 > 0 = bitstream 不對或時序邊緣。")
 
 def stat(name, a, ref=""):
     if not a:
