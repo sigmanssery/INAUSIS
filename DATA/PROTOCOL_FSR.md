@@ -160,8 +160,10 @@ Total ≈ 7 minutes. At 159 SPS per channel each 30 s dwell holds ≈4770 sample
 Write the end-of-dwell scale reading on paper as you go:
 
 ```
-up_0 ____  up_100 ____  up_200 ____  up_500 ____  up_1000 ____  up_1500 ____  up_2000 ____
-dn_1500 ____  dn_1000 ____  dn_500 ____  dn_200 ____  dn_100 ____  dn_0 ____   (grams)
+up_0 ___  up_20 ___  up_50 ___  up_100 ___  up_150 ___  up_200 ___
+up_300 ___  up_400 ___  up_600 ___  up_800 ___  up_1000 ___
+dn_800 ___  dn_600 ___  dn_400 ___  dn_200 ___  dn_100 ___  dn_50 ___  dn_0 ___
+                                                                        (grams)
 ```
 
 `dn_0` gets 60 s because recovery is the slow direction — the FSR has been seen
