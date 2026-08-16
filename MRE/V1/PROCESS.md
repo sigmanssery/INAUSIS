@@ -5,6 +5,11 @@ are process parameters that only the author's own runs can supply — they are l
 blank rather than guessed, because a plausible-looking number that nobody actually
 used is worse than an honest gap.
 
+> **Making a batch? Use [BATCH_LOG_TEMPLATE.md](BATCH_LOG_TEMPLATE.md).** It lists
+> every gap below as a fill-in field, in the order the bench work happens, and maps
+> each one back to the section it belongs in. Most of these can only be recorded
+> while the batch is running — afterwards they are gone.
+
 ---
 
 ## ⚠ Safety — read before handling the filler
@@ -96,6 +101,10 @@ Sealed mold, vacuum degassing. This is why the matrix had to be addition-cure.
 | Target thickness | **1.5 mm** |
 | Mold material | `[TO FILL]` |
 | Thickness reference method | `[TO FILL]` (shims / machined cavity / spacer) |
+| **Measured finished thickness** | `[TO FILL]` — mean and spread over 5 points, after post-cure |
+
+The measured thickness is not a formality. Both channels scale with it, so an
+L(P) or R(P) curve cannot be compared against another laboratory's without it.
 
 ### 5. Field cure
 
