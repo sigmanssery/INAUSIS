@@ -69,6 +69,82 @@ t_s, ch0..ch3, rp, l, rp_hex, l_hex, bad_ads, status, no_osc, chip_id, mark
 | `chip_id` | LDC `CHIP_ID` (0x3F), **re-read every sample loop** |
 | `mark` | operator event label, typed during capture |
 
+## Converting ADS counts to sensor resistance
+
+The excitation and the reference are the same, so the divider is **ratiometric**
+and the full-scale count is the converter's own:
+
+```
+    R_sensor = 100 kΩ × (32767 / counts − 1)
+```
+
+Verified against a soldered resistor on the X004 board, 2026-08-16 — 30 s, 2741
+samples after discarding the logger's start-up rows:
+
+```
+1 MΩ   ->  3002 counts  ->  991.5 kΩ      0.85% error, sd 0.40 kΩ (0.040%)
+100 kΩ ->  16652 counts ->   96.7 kΩ      within the resistors' own tolerance
+```
+
+Reference drift cancels in a ratiometric divider, which is why the two known
+values land inside 1% without any trimming.
+
+**Discard the first ~90 rows of any capture.** The logger's opening rows carry a
+start-up transient — in the run above they held all 91 of the corrupted samples,
+contiguous from row 0, on channels that were otherwise clean for the remaining
+29.8 s.
+
+> **Do not calibrate from a majority population without checking it.** A
+> two-point fit taken earlier the same day gave `R_div = 98.1 kΩ` and a
+> full-scale of **16 814**, and both points reproduced to 0.1% — because both
+> points came from the *corrupted* half of the data (see below). The tell was
+> there and was missed: a fitted full-scale of 16 814 implies the divider can
+> never reach the converter's range, and the alternative fit gave 33 655, which
+> **exceeds 16-bit full scale and is therefore impossible**. An impossible fitted
+> constant means the input data is wrong, not the model.
+
+## A one-bit shift that halved 27% of samples
+
+Before the fix, captures held two populations exactly a factor of two apart —
+1502 alongside 3004, 8326 alongside 16652 — covering 1.7% to 27.5% of samples
+depending on the run. An exact factor of two is not an analog effect.
+
+The driver clocks 17 bits for a 16-bit read and takes `spi_rx[15:0]`. When the
+sampling edge lands near the boundary, one data bit is lost and the captured word
+is **halved**. `RD_DELAY` in `ads114s08_spi.v` — about 1 µs between the DRDY edge
+and the first clock — moves the sampling instant away from that boundary. It cut
+the corruption from 27.5% to **0.04%** (1 sample in 2833).
+
+**Every capture taken before 2026-08-16 is affected**, and the corrupted samples
+are the *low* ones, not the high ones. To screen an old capture:
+
+```python
+med = np.median(v)                       # assumes the majority is correct —
+v = np.where(np.abs(v*2 - med) < np.abs(v - med), v*2, v)
+```
+
+A halved reading of a near-shorted input still clips at 32 767 after doubling,
+which is what produced the `0x7FFx` clusters that were repeatedly misread as
+sensor saturation.
+
+**Regression test:** a soldered 1 MΩ from the excitation pad to an AIN pad must
+give a single population at ~3002 counts with nothing near 1502.
+
+## Do not trust a pressure contact on the sensor pads
+
+Four different pressure arrangements were tried on the X004 sensor pads — tape,
+crocodile clips, a C-clamp, and a C-clamp through alumina. With a known 100 kΩ
+fitted, the chain read **30 counts**, implying **55 MΩ** in the path. A clean
+metal-to-metal contact of that geometry should be milliohms; even a 7 µm-wide
+line contact computes to 2.4 mΩ, so the eight-order gap can only be a dielectric
+film — plausibly silicone that migrated out of the elastomer, or the board's own
+organic surface finish.
+
+Soldering the leads brought the same 100 kΩ to 8326 counts with **sd 0.58**,
+matching the untouched channels exactly. **Solder, or use a connector. A
+multimeter probe reads through the film because its tip pierces it; flat leads do
+not.**
+
 ## Screening a capture before you analyse it
 
 Three checks, in this order. Skipping them has repeatedly produced conclusions that

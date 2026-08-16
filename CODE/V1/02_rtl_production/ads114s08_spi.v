@@ -164,7 +164,8 @@ localparam [4:0]
     S_WAITDR   = 5'd7,
     S_RDATA_I  = 5'd8,
     S_RDATA_C  = 5'd9,
-    S_WAIT     = 5'd10;
+    S_WAIT     = 5'd10,
+    S_RDLY     = 5'd11;   // settling gap between DRDY and the data read
 
 reg [4:0]  state, ret_state;
 reg [20:0] wait_cnt;          // up to ~78 ms
@@ -175,6 +176,34 @@ reg [1:0]  ch_idx;
 
 localparam [20:0] POR_CYC = 21'd135000;   // ~5 ms power-on
 localparam [20:0] GAP_CYC = 21'd270000;   // ~10 ms after RESET
+
+// ─── RD_DELAY: settling gap between DRDY# falling and starting the data read ──
+// 2026-08-16. Captures held two populations EXACTLY a factor of two apart, on
+// 1.7-27.5% of samples depending on the run. An analog effect cannot produce an
+// exact factor of two; a one-bit shift can, and it is the only thing that can.
+//
+// S_RDATA_I clocks 17 bits for a 16-bit result and takes spi_rx[15:0]. When the
+// sampling instant sits near the bit boundary the alignment is marginal and the
+// captured word loses a bit -> exactly HALF. The corrupted samples are the low
+// ones. (The first reading of this went the other way, and the resulting
+// calibration was wrong by 2x until the fix below settled which population was
+// real -- see DATA/README.md.)
+//
+// Waiting ~1 us after the DRDY edge moves the sampling instant off the boundary.
+// The conversion period is 1572 us (logic analyser, sd 0.4 us), so the cost is
+// 0.06% of throughput.
+//
+// VERIFIED on hardware, 1 Mohm soldered from the excitation pad to AIN5, 30 s,
+// discarding the first 91 rows (logger start-up transient):
+//   before   1502 (72.5%) + 3004 (27.5%)
+//   after    3002-3003, sd 1.09 counts, ONE shifted sample in 2741 (0.036%)
+// 3002 counts -> 991.5 kohm through R = 100k*(32767/counts - 1). 0.85% error,
+// and the run-to-run spread is 0.40 kohm (0.040%). The three unconnected
+// channels stay at sd 0.6-0.8 counts, unchanged by this edit.
+//
+// Regression test: that same 1 Mohm must give a single population at ~3002 with
+// nothing near 1502.
+localparam [20:0] RD_DELAY = 21'd27;      // ~1 us @ 27 MHz
 
 // REF: REFSEL=10 (internal 2.5V), REFCON=10 (always on). VERIFY/TUNE for tank/sensor.
 localparam [7:0] VAL_REF = 8'h0A;
@@ -253,7 +282,12 @@ always @(posedge clk or negedge rst_n) begin
         end
         // ── wait THIS conversion's DRDY# ASSERTION (1->0 = data ready) ─────────
         S_WAITDR: begin
-            if (drdy_assert) state <= S_RDATA_I;
+            if (drdy_assert) begin wait_cnt <= 21'd0; state <= S_RDLY; end
+        end
+        // ── let the ADS finish driving MISO before the first clock (see RD_DELAY)
+        S_RDLY: begin
+            if (wait_cnt == RD_DELAY) begin wait_cnt <= 21'd0; state <= S_RDATA_I; end
+            else wait_cnt <= wait_cnt + 21'd1;
         end
         // ── DIRECT read: single-shot leaves DRDY# LOW, so the ADS already drives
         //    the conversion data onto MISO. Read it by clocking 16(+1) bits with NO
