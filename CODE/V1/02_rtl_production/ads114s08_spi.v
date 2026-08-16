@@ -64,9 +64,40 @@ localparam CLK_DIV = 56;            // 27 MHz / 56 = ~482 kHz
 reg [7:0]  clk_cnt;
 reg        sclk_en;                 // rising-edge strobe
 reg        sclk_fall;               // falling-edge strobe
+
+// declared here (not with the engine below) so the divider can see the launch
+reg        spi_start, spi_busy, spi_done;
+wire       spi_launch = spi_start & ~spi_busy;
+
+// ─── PHASE RESET on transaction start — fixes a random one-bit read shift ─────
+// 2026-08-16. This divider used to free-run, so CS fell at an arbitrary point in
+// the 56-clock period and the strobe that arrived FIRST was whichever came next:
+//
+//   clk_cnt 0..27 at CS  -> sclk_fall first:  F R F R ... F16 R16 F17(end)
+//                           = 16 MISO samples -> spi_rx[15:0] is data>>1 = HALF
+//   clk_cnt 28..55 at CS -> sclk_en   first:  R F R F ... R17 F17(end)
+//                           = 17 MISO samples -> spi_rx[15:0] is the data
+//
+// The transaction always ends on the 17th sclk_fall (bit_cnt counts falls), so
+// the number of RISING edges inside it — i.e. the number of MISO samples — was
+// one more or one less depending on nothing but arrival phase. That is the
+// factor-of-two population seen in every capture: 43.7% halved on a fixed
+// 100 kohm, ~50/50 by nature because the phase is effectively random.
+//
+// Writes were never affected: MOSI shifts on falls and the fall count is fixed.
+// Only the read path samples on rises, which is why the config WREGs always
+// verified while the data reads did not.
+//
+// Loading CLK_DIV/2 forces the sclk_en-first ordering, so every read gets 17
+// samples. RD_DELAY below cannot fix this and never could — it only nudged the
+// phase, which is why one run landed at 0.04% and the next at 43.7%.
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         clk_cnt   <= 0;
+        sclk_en   <= 0;
+        sclk_fall <= 0;
+    end else if (spi_launch) begin
+        clk_cnt   <= CLK_DIV/2;     // next strobe is sclk_en -> rise-first
         sclk_en   <= 0;
         sclk_fall <= 0;
     end else begin
@@ -103,7 +134,8 @@ initial begin
 end
 
 // ─── SPI byte engine (VERBATIM original) + spi_done pulse ──────────────────────
-reg        spi_start, spi_busy, spi_done;
+// spi_start / spi_busy / spi_done are declared up with the clock divider, which
+// needs spi_launch to reset the phase.
 reg [23:0] load_data, shift_out, spi_rx;
 reg [5:0]  total_bits, bit_cnt;
 
