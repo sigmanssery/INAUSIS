@@ -71,7 +71,8 @@ reg        spi_pending;             // request latched, waiting for LAUNCH_PHASE
 
 // CS asserts only when clk_cnt == LAUNCH_PHASE, so the next divider strobe is
 // always sclk_en (at CLK_DIV-1) and never sclk_fall (at CLK_DIV/2-1).
-localparam LAUNCH_PHASE = CLK_DIV/2;
+localparam LAUNCH_PHASE = CLK_DIV/2;  // rise-first, 17 MISO samples (confirmed:
+                                      // LAUNCH_PHASE=0 reads all-zero on HW)
 wire       spi_launch = spi_pending & ~spi_busy & (clk_cnt == LAUNCH_PHASE);
 
 // ─── PHASE RESET on transaction start — fixes a random one-bit read shift ─────
@@ -174,7 +175,24 @@ always @(posedge clk or negedge rst_n) begin
             ads_sclk  <= 1'b0;
             bit_cnt   <= total_bits - 1;
             spi_busy  <= 1'b1;
-            shift_out <= load_data;
+            // ── MOSI must be valid BEFORE the first rising edge ──────────────
+            // ads_din used to be driven only on sclk_fall. With the launch gate
+            // forcing rise-first ordering, the first rising edge — the edge the
+            // ADS samples DIN on — arrives before any falling edge, so the ADS
+            // sampled whatever ads_din held from the PREVIOUS transaction and
+            // every byte landed one bit late.
+            //
+            // Measured on the wire, 24 MHz logic analyser, 2026-08-16:
+            //   what the ADS received   21 00 26 / 21 00 0E / 21 00 06
+            //   what was intended       42 00 5C / 42 00 4C / 42 00 1C
+            // 0x42 is WREG; 0x21 is RREG. Single-byte 0x08 (START) arrived as
+            // 0x04 (POWERDOWN). The device was never configured and never told
+            // to convert, which is why the reads were noise.
+            //
+            // Drive bit 23 here and pre-shift, so rise 1 samples the real first
+            // bit and rise N samples bit 24-N.
+            ads_din   <= load_data[23];
+            shift_out <= {load_data[22:0], 1'b0};
         end
         if (spi_busy) begin
             if (sclk_en) begin

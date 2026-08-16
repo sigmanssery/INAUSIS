@@ -61,12 +61,18 @@ def shift_report(sv):
     """
     c = collections.Counter(sv)
     ref = c.most_common(1)[0][0]
-    if abs(ref) < 50:                      # 接近 0 時比值無意義
+    if abs(ref) < 500:                     # 訊號本身接近 0 時，比值沒有意義
         return None, ""
     tol = 0.03
     half = sum(n for v, n in c.items() if abs(v - ref / 2) < tol * abs(ref))
     dbl  = sum(n for v, n in c.items() if abs(v - ref * 2) < tol * abs(ref) * 2)
     tot  = len(sv)
+    # 位移是雙峰的：ref 和 ref/2 之間應該是空的。連續的雜訊會把中間填滿，
+    # 那不是位移。沒有這道檢查，±170 的雜訊會被誤報成「減半 2.7%」。
+    lo, hi = sorted((0.60 * ref, 0.90 * ref))
+    gap = sum(n for v, n in c.items() if lo < v < hi)
+    if gap >= max(half, 1):
+        return ref, "  位移 0 ✓（分布連續，非雙峰）"
     if not (half or dbl):
         return ref, "  位移 0 ✓"
     parts = []
