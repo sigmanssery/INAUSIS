@@ -64,51 +64,6 @@ localparam CLK_DIV = 56;            // 27 MHz / 56 = ~482 kHz
 reg [7:0]  clk_cnt;
 reg        sclk_en;                 // rising-edge strobe
 reg        sclk_fall;               // falling-edge strobe
-
-// declared here (not with the engine below) because the launch gate reads them
-reg        spi_start, spi_busy, spi_done;
-reg        spi_pending;             // request latched, waiting for LAUNCH_PHASE
-
-// CS asserts only when clk_cnt == LAUNCH_PHASE, so the next divider strobe is
-// always sclk_en (at CLK_DIV-1) and never sclk_fall (at CLK_DIV/2-1).
-localparam LAUNCH_PHASE = CLK_DIV/2;  // rise-first, 17 MISO samples (confirmed:
-                                      // LAUNCH_PHASE=0 reads all-zero on HW)
-wire       spi_launch = spi_pending & ~spi_busy & (clk_cnt == LAUNCH_PHASE);
-
-// ─── PHASE RESET on transaction start — fixes a random one-bit read shift ─────
-// 2026-08-16. This divider used to free-run, so CS fell at an arbitrary point in
-// the 56-clock period and the strobe that arrived FIRST was whichever came next:
-//
-//   clk_cnt 0..27 at CS  -> sclk_fall first:  F R F R ... F16 R16 F17(end)
-//                           = 16 MISO samples -> spi_rx[15:0] is data>>1 = HALF
-//   clk_cnt 28..55 at CS -> sclk_en   first:  R F R F ... R17 F17(end)
-//                           = 17 MISO samples -> spi_rx[15:0] is the data
-//
-// The transaction always ends on the 17th sclk_fall (bit_cnt counts falls), so
-// the number of RISING edges inside it — i.e. the number of MISO samples — was
-// one more or one less depending on nothing but arrival phase. That is the
-// factor-of-two population seen in every capture: 43.7% halved on a fixed
-// 100 kohm, ~50/50 by nature because the phase is effectively random.
-//
-// Writes were never affected: MOSI shifts on falls and the fall count is fixed.
-// Only the read path samples on rises, which is why the config WREGs always
-// verified while the data reads did not.
-//
-// FIRST ATTEMPT, REVERTED: resetting clk_cnt to CLK_DIV/2 on launch removed the
-// shift but added ~±170 counts of noise to every channel, including a fixed
-// resistor on ch0 and the three inputs sitting at 0-2 through their dividers.
-// Restarting a running divider is a phase discontinuity on a clock that reaches
-// the ADS, and the ADS is converting while it happens.
-//
-// What is done instead (see LAUNCH_PHASE in the engine): leave this divider
-// entirely alone and delay CS assertion until the divider reaches a known
-// phase. Same deterministic rise-first ordering, no discontinuity. The evidence
-// that this is sufficient: before any fix, 56% of transactions already asserted
-// CS at clk_cnt 28..55 -- the rise-first case -- and those were both correct
-// (3204 on a 100 kohm) and quiet. The ordering was never the noisy part.
-//
-// RD_DELAY below cannot fix the shift and never could: it only nudged the
-// phase, which is why one run landed at 0.04% and the next at 43.7%.
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         clk_cnt   <= 0;
@@ -148,51 +103,28 @@ initial begin
 end
 
 // ─── SPI byte engine (VERBATIM original) + spi_done pulse ──────────────────────
-// spi_start / spi_busy / spi_done are declared up with the clock divider, which
-// needs spi_launch to reset the phase.
+reg        spi_start, spi_busy, spi_done;
 reg [23:0] load_data, shift_out, spi_rx;
 reg [5:0]  total_bits, bit_cnt;
 
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        ads_cs_n    <= 1'b1;
-        ads_sclk    <= 1'b0;
-        ads_din     <= 1'b0;
-        spi_busy    <= 1'b0;
-        spi_done    <= 1'b0;
-        spi_pending <= 1'b0;
-        spi_rx      <= 24'h0;
-        bit_cnt     <= 0;
-        shift_out   <= 24'h0;
+        ads_cs_n  <= 1'b1;
+        ads_sclk  <= 1'b0;
+        ads_din   <= 1'b0;
+        spi_busy  <= 1'b0;
+        spi_done  <= 1'b0;
+        spi_rx    <= 24'h0;
+        bit_cnt   <= 0;
+        shift_out <= 24'h0;
     end else begin
         spi_done <= 1'b0;
-        // latch the 1-cycle request; load_data is held by the FSM (it parks in
-        // S_WAIT until spi_done), so waiting for the phase is safe.
-        if (spi_start) spi_pending <= 1'b1;
-        if (spi_launch) begin
-            spi_pending <= 1'b0;
+        if (spi_start && !spi_busy) begin
             ads_cs_n  <= 1'b0;
             ads_sclk  <= 1'b0;
             bit_cnt   <= total_bits - 1;
             spi_busy  <= 1'b1;
-            // ── MOSI must be valid BEFORE the first rising edge ──────────────
-            // ads_din used to be driven only on sclk_fall. With the launch gate
-            // forcing rise-first ordering, the first rising edge — the edge the
-            // ADS samples DIN on — arrives before any falling edge, so the ADS
-            // sampled whatever ads_din held from the PREVIOUS transaction and
-            // every byte landed one bit late.
-            //
-            // Measured on the wire, 24 MHz logic analyser, 2026-08-16:
-            //   what the ADS received   21 00 26 / 21 00 0E / 21 00 06
-            //   what was intended       42 00 5C / 42 00 4C / 42 00 1C
-            // 0x42 is WREG; 0x21 is RREG. Single-byte 0x08 (START) arrived as
-            // 0x04 (POWERDOWN). The device was never configured and never told
-            // to convert, which is why the reads were noise.
-            //
-            // Drive bit 23 here and pre-shift, so rise 1 samples the real first
-            // bit and rise N samples bit 24-N.
-            ads_din   <= load_data[23];
-            shift_out <= {load_data[22:0], 1'b0};
+            shift_out <= load_data;
         end
         if (spi_busy) begin
             if (sclk_en) begin
@@ -232,8 +164,7 @@ localparam [4:0]
     S_WAITDR   = 5'd7,
     S_RDATA_I  = 5'd8,
     S_RDATA_C  = 5'd9,
-    S_WAIT     = 5'd10,
-    S_RDLY     = 5'd11;   // settling gap between DRDY and the data read
+    S_WAIT     = 5'd10;
 
 reg [4:0]  state, ret_state;
 reg [20:0] wait_cnt;          // up to ~78 ms
@@ -244,34 +175,6 @@ reg [1:0]  ch_idx;
 
 localparam [20:0] POR_CYC = 21'd135000;   // ~5 ms power-on
 localparam [20:0] GAP_CYC = 21'd270000;   // ~10 ms after RESET
-
-// ─── RD_DELAY: settling gap between DRDY# falling and starting the data read ──
-// 2026-08-16. Captures held two populations EXACTLY a factor of two apart, on
-// 1.7-27.5% of samples depending on the run. An analog effect cannot produce an
-// exact factor of two; a one-bit shift can, and it is the only thing that can.
-//
-// S_RDATA_I clocks 17 bits for a 16-bit result and takes spi_rx[15:0]. When the
-// sampling instant sits near the bit boundary the alignment is marginal and the
-// captured word loses a bit -> exactly HALF. The corrupted samples are the low
-// ones. (The first reading of this went the other way, and the resulting
-// calibration was wrong by 2x until the fix below settled which population was
-// real -- see DATA/README.md.)
-//
-// Waiting ~1 us after the DRDY edge moves the sampling instant off the boundary.
-// The conversion period is 1572 us (logic analyser, sd 0.4 us), so the cost is
-// 0.06% of throughput.
-//
-// VERIFIED on hardware, 1 Mohm soldered from the excitation pad to AIN5, 30 s,
-// discarding the first 91 rows (logger start-up transient):
-//   before   1502 (72.5%) + 3004 (27.5%)
-//   after    3002-3003, sd 1.09 counts, ONE shifted sample in 2741 (0.036%)
-// 3002 counts -> 991.5 kohm through R = 100k*(32767/counts - 1). 0.85% error,
-// and the run-to-run spread is 0.40 kohm (0.040%). The three unconnected
-// channels stay at sd 0.6-0.8 counts, unchanged by this edit.
-//
-// Regression test: that same 1 Mohm must give a single population at ~3002 with
-// nothing near 1502.
-localparam [20:0] RD_DELAY = 21'd27;      // ~1 us @ 27 MHz
 
 // REF: REFSEL=10 (internal 2.5V), REFCON=10 (always on). VERIFY/TUNE for tank/sensor.
 localparam [7:0] VAL_REF = 8'h0A;
@@ -350,12 +253,7 @@ always @(posedge clk or negedge rst_n) begin
         end
         // ── wait THIS conversion's DRDY# ASSERTION (1->0 = data ready) ─────────
         S_WAITDR: begin
-            if (drdy_assert) begin wait_cnt <= 21'd0; state <= S_RDLY; end
-        end
-        // ── let the ADS finish driving MISO before the first clock (see RD_DELAY)
-        S_RDLY: begin
-            if (wait_cnt == RD_DELAY) begin wait_cnt <= 21'd0; state <= S_RDATA_I; end
-            else wait_cnt <= wait_cnt + 21'd1;
+            if (drdy_assert) state <= S_RDATA_I;
         end
         // ── DIRECT read: single-shot leaves DRDY# LOW, so the ADS already drives
         //    the conversion data onto MISO. Read it by clocking 16(+1) bits with NO
