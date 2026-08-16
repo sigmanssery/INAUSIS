@@ -65,9 +65,14 @@ reg [7:0]  clk_cnt;
 reg        sclk_en;                 // rising-edge strobe
 reg        sclk_fall;               // falling-edge strobe
 
-// declared here (not with the engine below) so the divider can see the launch
+// declared here (not with the engine below) because the launch gate reads them
 reg        spi_start, spi_busy, spi_done;
-wire       spi_launch = spi_start & ~spi_busy;
+reg        spi_pending;             // request latched, waiting for LAUNCH_PHASE
+
+// CS asserts only when clk_cnt == LAUNCH_PHASE, so the next divider strobe is
+// always sclk_en (at CLK_DIV-1) and never sclk_fall (at CLK_DIV/2-1).
+localparam LAUNCH_PHASE = CLK_DIV/2;
+wire       spi_launch = spi_pending & ~spi_busy & (clk_cnt == LAUNCH_PHASE);
 
 // ─── PHASE RESET on transaction start — fixes a random one-bit read shift ─────
 // 2026-08-16. This divider used to free-run, so CS fell at an arbitrary point in
@@ -88,16 +93,24 @@ wire       spi_launch = spi_start & ~spi_busy;
 // Only the read path samples on rises, which is why the config WREGs always
 // verified while the data reads did not.
 //
-// Loading CLK_DIV/2 forces the sclk_en-first ordering, so every read gets 17
-// samples. RD_DELAY below cannot fix this and never could — it only nudged the
+// FIRST ATTEMPT, REVERTED: resetting clk_cnt to CLK_DIV/2 on launch removed the
+// shift but added ~±170 counts of noise to every channel, including a fixed
+// resistor on ch0 and the three inputs sitting at 0-2 through their dividers.
+// Restarting a running divider is a phase discontinuity on a clock that reaches
+// the ADS, and the ADS is converting while it happens.
+//
+// What is done instead (see LAUNCH_PHASE in the engine): leave this divider
+// entirely alone and delay CS assertion until the divider reaches a known
+// phase. Same deterministic rise-first ordering, no discontinuity. The evidence
+// that this is sufficient: before any fix, 56% of transactions already asserted
+// CS at clk_cnt 28..55 -- the rise-first case -- and those were both correct
+// (3204 on a 100 kohm) and quiet. The ordering was never the noisy part.
+//
+// RD_DELAY below cannot fix the shift and never could: it only nudged the
 // phase, which is why one run landed at 0.04% and the next at 43.7%.
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         clk_cnt   <= 0;
-        sclk_en   <= 0;
-        sclk_fall <= 0;
-    end else if (spi_launch) begin
-        clk_cnt   <= CLK_DIV/2;     // next strobe is sclk_en -> rise-first
         sclk_en   <= 0;
         sclk_fall <= 0;
     end else begin
@@ -141,17 +154,22 @@ reg [5:0]  total_bits, bit_cnt;
 
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        ads_cs_n  <= 1'b1;
-        ads_sclk  <= 1'b0;
-        ads_din   <= 1'b0;
-        spi_busy  <= 1'b0;
-        spi_done  <= 1'b0;
-        spi_rx    <= 24'h0;
-        bit_cnt   <= 0;
-        shift_out <= 24'h0;
+        ads_cs_n    <= 1'b1;
+        ads_sclk    <= 1'b0;
+        ads_din     <= 1'b0;
+        spi_busy    <= 1'b0;
+        spi_done    <= 1'b0;
+        spi_pending <= 1'b0;
+        spi_rx      <= 24'h0;
+        bit_cnt     <= 0;
+        shift_out   <= 24'h0;
     end else begin
         spi_done <= 1'b0;
-        if (spi_start && !spi_busy) begin
+        // latch the 1-cycle request; load_data is held by the FSM (it parks in
+        // S_WAIT until spi_done), so waiting for the phase is safe.
+        if (spi_start) spi_pending <= 1'b1;
+        if (spi_launch) begin
+            spi_pending <= 1'b0;
             ads_cs_n  <= 1'b0;
             ads_sclk  <= 1'b0;
             bit_cnt   <= total_bits - 1;
