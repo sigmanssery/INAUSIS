@@ -169,6 +169,44 @@ localparam [4:0]
 reg [4:0]  state, ret_state;
 reg [20:0] wait_cnt;          // up to ~78 ms
 reg [1:0]  ch_idx;
+
+// ─── RD_REPEAT: read each conversion several times, keep the largest ──────────
+// The divider below free-runs, so CS falls at an arbitrary point in its 56-clock
+// period and the transaction contains either 16 or 17 SCLK rising edges. Reads
+// sample MISO on rises, so one edge fewer means one bit fewer and the captured
+// word is exactly HALF. Measured on a fixed 100 kohm: 38-52% of reads halved,
+// and the proportion is not reproducible across power cycles (one session ran at
+// 100%).
+//
+// Only reads are affected. Writes shift MOSI on falls and the fall count is
+// fixed, which is why the config WREGs always verified. And only THIS read is
+// exposed, because it is a direct read carrying no command byte (see S_RDATA_I)
+// -- there is nothing for the device to frame against, so the bit alignment is
+// set purely by CS phase.
+//
+// Rather than chase that phase (four attempts on 2026-08-16 each made it worse
+// or stopped conversion entirely -- see git history), this is immune by
+// construction: corruption only ever HALVES, so the largest of N reads is
+// correct unless all N were corrupted. In single-shot the data register holds
+// its value until the next START, so re-reading returns the same conversion.
+//
+//   1 read   ~44% wrong        4 reads  2.6%
+//   2 reads   19%              5 reads  1.0%
+//   3 reads  7.7%              6 reads  0.4%
+//
+// Cost: 4 extra 35 us transactions per channel on a 1572 us conversion, so
+// 159 -> ~138 SPS per channel.
+//
+// Compare on MAGNITUDE, not value: halving moves a negative reading UP, so a
+// plain unsigned max would pick the corrupted one on channels sitting near zero.
+localparam [2:0] RD_REPEAT = 3'd5;
+reg [15:0] rd_max;
+reg [2:0]  rd_cnt;
+
+function [15:0] absv;
+    input [15:0] x;
+    begin absv = x[15] ? (~x + 16'd1) : x; end
+endfunction
 // SINGLE-SHOT per channel: set MUX, START one conversion, wait its DRDY, read.
 // Each conversion is taken fully on the selected mux AFTER it settled, so there
 // is no continuous-mode boundary race -> no more intermittent 0x7F8D (~+FS) rails.
@@ -212,6 +250,8 @@ always @(posedge clk or negedge rst_n) begin
         init_done  <= 1'b0;
         err_flag   <= 1'b0;
         ads_start  <= 1'b0;
+        rd_max     <= 16'h0;
+        rd_cnt     <= 3'd0;
     end else begin
         spi_start  <= 1'b0;
         data_valid <= 1'b0;
@@ -253,7 +293,9 @@ always @(posedge clk or negedge rst_n) begin
         end
         // ── wait THIS conversion's DRDY# ASSERTION (1->0 = data ready) ─────────
         S_WAITDR: begin
-            if (drdy_assert) state <= S_RDATA_I;
+            if (drdy_assert) begin
+                rd_max <= 16'h0; rd_cnt <= 3'd0; state <= S_RDATA_I;
+            end
         end
         // ── DIRECT read: single-shot leaves DRDY# LOW, so the ADS already drives
         //    the conversion data onto MISO. Read it by clocking 16(+1) bits with NO
@@ -262,13 +304,20 @@ always @(posedge clk or negedge rst_n) begin
             load_data <= 24'h0; total_bits <= 6'd17;       // 16 data + 1 (engine BUG2)
             spi_start <= 1'b1; ret_state <= S_RDATA_C; state <= S_WAIT;
         end
-        // ── capture: 16-bit result in spi_rx[15:0]; advance channel, loop ──────
+        // ── capture: keep the largest-magnitude of RD_REPEAT reads (see above) ─
         S_RDATA_C: begin
-            data_out   <= spi_rx[15:0];
-            ch_out     <= ch_idx;
-            data_valid <= 1'b1;
-            ch_idx     <= ch_idx + 2'd1;
-            state      <= S_MUX_I;
+            if (rd_cnt == RD_REPEAT - 3'd1) begin
+                data_out   <= (absv(spi_rx[15:0]) > absv(rd_max)) ? spi_rx[15:0]
+                                                                  : rd_max;
+                ch_out     <= ch_idx;
+                data_valid <= 1'b1;
+                ch_idx     <= ch_idx + 2'd1;
+                state      <= S_MUX_I;
+            end else begin
+                if (absv(spi_rx[15:0]) > absv(rd_max)) rd_max <= spi_rx[15:0];
+                rd_cnt <= rd_cnt + 3'd1;
+                state  <= S_RDATA_I;
+            end
         end
         // ── shared wait: hold until the SPI transaction actually completes ─
         S_WAIT: begin
