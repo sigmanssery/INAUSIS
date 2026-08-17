@@ -37,7 +37,16 @@ module ads114s08_spi #(
     // needed when the mux never changes.
     //
     //   SINGLE_CH = 0   1713 us x 4   ->  146 SPS per channel
-    //   SINGLE_CH = 1   1660 us       ->  602 SPS on the selected input
+    //   SINGLE_CH = 1   1713 us       ->  584 SPS on the selected input
+    //
+    // The INPMUX write is kept even though the mux never moves: dropping it to
+    // save 52 us put START immediately after the read and railed 37% of samples
+    // at +FS. Do not remove it again.
+    //
+    // NOTE: this is the CONVERSION rate. What reaches the host is set by
+    // STREAM_MODE in top_dual.v, which was emitting one set of lines every
+    // 10 ms - so every capture before 2026-08-17 is 100 Hz data regardless of
+    // what the converter was doing.
     //
     // 86% of the remaining time is the conversion itself (1250 us at DR = 800
     // SPS plus 218 us of single-shot start-up), so DATARATE is the next lever
@@ -330,14 +339,12 @@ always @(posedge clk or negedge rst_n) begin
                                                                   : rd_max;
                 ch_out     <= ch_idx;
                 data_valid <= 1'b1;
-                if (SINGLE_CH) begin
-                    // mux is already on SINGLE_IDX and never moves, so skip the
-                    // INPMUX write and go straight to the next conversion
-                    state  <= S_START_I;
-                end else begin
-                    ch_idx <= ch_idx + 2'd1;
-                    state  <= S_MUX_I;
-                end
+                // Always go back through S_MUX_I, even when the mux never
+                // changes. Skipping it to save 52 us put START immediately
+                // after the read and railed 37% of samples at +FS on hardware;
+                // the write is also the gap the device needs between them.
+                if (!SINGLE_CH) ch_idx <= ch_idx + 2'd1;
+                state <= S_MUX_I;
             end else begin
                 if (absv(spi_rx[15:0]) > absv(rd_max)) rd_max <= spi_rx[15:0];
                 rd_cnt <= rd_cnt + 3'd1;

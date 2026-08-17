@@ -235,7 +235,10 @@ module top_dual (
     //                                             touch/release figures
     //   2 = LDC only, 1 ms (1 kHz)   slots 4-7  — RP/L/ST/ID at the LDC's own
     //                                             loop rate, for transients
-    localparam [1:0] STREAM_MODE = 2'd0;
+    // 2026-08-17: mode 1 for the Fig 4-5 touch/release capture. Mode 0's 10 ms
+    // burst caps the logged data at 100 Hz no matter how fast the ADS converts,
+    // which is why single-channel mode did not change the row rate at first.
+    localparam [1:0] STREAM_MODE = 2'd1;
 
     reg [2:0]  slot; reg [15:0] val; reg [22:0] dcnt; reg acq;
     localparam [22:0] PERIOD = (STREAM_MODE == 2'd0) ? 23'd270000   // ~10 ms
