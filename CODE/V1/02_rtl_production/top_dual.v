@@ -43,8 +43,26 @@ module top_dual (
     // is still high-Z.
     output wire ads_reset_n,  // board: 10k pull-up to IOVDD  (active LOW)
     output wire ldo_en,       // board: 100k pull-up to VIN   (HIGH = rail on)
-    output wire ads_clk       // board: pull-down to DGND      (see EXT_CLK)
+    output wire ads_clk,      // board: pull-down to DGND      (see EXT_CLK)
+
+    // ── Debug mirrors for a logic analyser ──────────────────────────────────
+    // A header hole takes one dupont connector, so probing the ADS bus directly
+    // means unplugging the ADS to plug in the analyser — which measures a bus
+    // with nothing on it. These copy the six ADS signals onto otherwise unused
+    // pins 51-57, contiguous on the header, so the analyser gets its own row and
+    // the working harness is never touched. Purely fan-out: no logic, no timing
+    // effect on the real bus.
+    output wire dbg_drdy,     // 51  <- ads_drdy_n
+    output wire dbg_cs,       // 53  <- ads_cs_n
+    output wire dbg_sclk,     // 57  <- ads_sclk
+    output wire dbg_din,      // 68  <- ads_din
+    output wire dbg_dout      // 69  <- ads_dout
 );
+    assign dbg_drdy  = ads_drdy_n;
+    assign dbg_cs    = ads_cs_n;
+    assign dbg_sclk  = ads_sclk;
+    assign dbg_din   = ads_din;
+    assign dbg_dout  = ads_dout;
     // ─── time-multiplex: only ONE peripheral active at a time ────────────────
     // Running ADS+LDC together collapses the shared 3.3V (board whines, both
     // read garbage) even though each works perfectly ALONE. So give each a turn
@@ -56,7 +74,7 @@ module top_dual (
     // feed both at once). TIME_MUX=0: both cores run SIMULTANEOUSLY at full rate
     // (two-board split mode — each board has its own power wiring; worth it for
     // the full sample rate the TTCGS chain needs).
-    localparam TIME_MUX = 1'b1;
+    localparam TIME_MUX = 1'b0;
     reg        slice;            // 0 = ADS turn, 1 = LDC turn
     reg [22:0] slice_cnt;
     localparam [22:0] SLICE_CYC = 23'd4_050_000;   // ~150 ms @27 MHz per turn
@@ -72,7 +90,13 @@ module top_dual (
     wire        ads_dv, ads_init, ads_errf;
     wire [15:0] ads_data;
     wire [1:0]  ads_ch;
-    ads114s08_spi u_ads (
+    // SINGLE_CH = 1 converts only corner B (AIN5) and skips the three empty
+    // inputs, taking that channel from 146 to 602 SPS. Set it back to 0 for
+    // dual-modal or four-corner work -- see the parameter comment in
+    // ads114s08_spi.v. ch1..ch3 stay at their reset value while it is 1.
+    ads114s08_spi #(
+        .SINGLE_CH(1), .SINGLE_IDX(2'd0)      // 0 = AIN5 = corner B
+    ) u_ads (
         .clk(clk27), .rst_n(rst_ads),
         .ads_cs_n(ads_cs_n), .ads_sclk(ads_sclk), .ads_din(ads_din),
         .ads_dout(ads_dout), .ads_drdy_n(ads_drdy_n), .ads_start(ads_start),

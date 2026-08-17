@@ -29,7 +29,26 @@
 // Clock: 27 MHz; SPI ~1.93 MHz (CLK_DIV=14). Ports unchanged (top_bringup /
 // ttcgs_board instantiate this as-is).
 
-module ads114s08_spi (
+module ads114s08_spi #(
+    // ─── SINGLE_CH: convert one input instead of cycling all four ────────────
+    // Four-channel round-robin costs a factor of four on the channel that has a
+    // sensor on it, because it waits out three conversions of inputs sitting at
+    // 0-2 counts. It also pays a 52 us INPMUX write per channel that is not
+    // needed when the mux never changes.
+    //
+    //   SINGLE_CH = 0   1713 us x 4   ->  146 SPS per channel
+    //   SINGLE_CH = 1   1660 us       ->  602 SPS on the selected input
+    //
+    // 86% of the remaining time is the conversion itself (1250 us at DR = 800
+    // SPS plus 218 us of single-shot start-up), so DATARATE is the next lever
+    // if more is wanted - 0x3A -> 0x3D gives about 1500 SPS, at the cost of
+    // noise. Measure before spending that.
+    //
+    // SINGLE_IDX indexes mux_table: 0 = AIN5 (corner B), 1 = AIN4 (A),
+    // 2 = AIN1 (D), 3 = AIN0 (C).
+    parameter        SINGLE_CH  = 0,
+    parameter [1:0]  SINGLE_IDX = 2'd0
+) (
     input  wire        clk,          // 27 MHz
     input  wire        rst_n,        // active-low reset
 
@@ -246,7 +265,7 @@ always @(posedge clk or negedge rst_n) begin
         data_valid <= 1'b0;
         data_out   <= 16'h0;
         ch_out     <= 2'h0;
-        ch_idx     <= 2'h0;
+        ch_idx     <= SINGLE_CH ? SINGLE_IDX : 2'h0;
         init_done  <= 1'b0;
         err_flag   <= 1'b0;
         ads_start  <= 1'b0;
@@ -311,8 +330,14 @@ always @(posedge clk or negedge rst_n) begin
                                                                   : rd_max;
                 ch_out     <= ch_idx;
                 data_valid <= 1'b1;
-                ch_idx     <= ch_idx + 2'd1;
-                state      <= S_MUX_I;
+                if (SINGLE_CH) begin
+                    // mux is already on SINGLE_IDX and never moves, so skip the
+                    // INPMUX write and go straight to the next conversion
+                    state  <= S_START_I;
+                end else begin
+                    ch_idx <= ch_idx + 2'd1;
+                    state  <= S_MUX_I;
+                end
             end else begin
                 if (absv(spi_rx[15:0]) > absv(rd_max)) rd_max <= spi_rx[15:0];
                 rd_cnt <= rd_cnt + 3'd1;
