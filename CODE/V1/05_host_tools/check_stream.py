@@ -60,7 +60,11 @@ def shift_report(sv):
     而位移群跟正常群會同時落在範圍裡。這個檢查是唯一直接的判準。
     """
     c = collections.Counter(sv)
-    ref = c.most_common(1)[0][0]
+    # 基準一律取「上面那群」。物理機制是漏取一位 -> 值只會變小，所以正確值
+    # 永遠是大的那個。用眾數當基準的話，兩群接近五五分時標籤會在「減半」和
+    # 「加倍」之間翻轉，同一件事看起來像兩種故障。
+    top = [v for v, _ in c.most_common(6)]
+    ref = max(top, key=lambda v: (abs(v), c[v]))
     if abs(ref) < 500:                     # 訊號本身接近 0 時，比值沒有意義
         return None, ""
     tol = 0.03
