@@ -148,6 +148,19 @@ samples after discarding the logger's start-up rows:
 Reference drift cancels in a ratiometric divider, which is why the two known
 values land inside 1% without any trimming.
 
+> **The divider was changed on 2026-08-16 and the constant with it.** A 12 kΩ was
+> fitted from the AIN5 pad to GND, in parallel with the board's 100 kΩ, because an
+> FSR402 works between about 1 kΩ and 100 kΩ where a 100 kΩ divider barely moves.
+> Everything in the 2026-08-17/18 touch series therefore uses
+>
+> ```
+>     R_sensor = 10.855 kΩ × (32767 / counts − 1)
+> ```
+>
+> measured, not nominal: a known 100 kΩ read 3205 counts and a known 1 MΩ read 362,
+> two independent points that agree. The 100 kΩ form above still applies to every
+> capture before that date.
+
 **Discard the first ~90 rows of any capture.** The logger's opening rows carry a
 start-up transient — in the run above they held all 91 of the corrupted samples,
 contiguous from row 0, on channels that were otherwise clean for the remaining
