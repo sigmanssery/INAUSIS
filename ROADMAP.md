@@ -175,24 +175,28 @@ change at that point.
 
 ---
 
-## The sample rate decision
+## The sample rate decision — CLOSED 2026-08-18
 
-**What.** Reconcile the hardware's measured **159 SPS per channel** with the 1 kSPS
-the manuscripts assume.
+**Kept here because the reasoning below was wrong in an instructive way.**
 
-**Why it matters.** TTCGS defines its DoG scales in **samples**, so every published
-passband depends on the sample rate. See [SAMPLE_RATE.md](CODE/V1/SAMPLE_RATE.md)
-for the measured timing budget and the three ways out.
+The entry used to say the hardware ran at 159 SPS against the manuscripts' 1 kSPS,
+and that the way out was to raise `DR`, re-derive the numbers, or parameterise σ.
+All three assumed the converter was the bottleneck. It was not.
 
-**Why not now.** The analog front end currently produces no signal — the elastomer
-reads gigaohms untouched and the divider is 100 kΩ. Sampling a flat line four times
-faster gains nothing. And the choice between raising `DR`, re-deriving the numbers,
-or parameterising σ changes text in both manuscripts, so it should be made once,
-with data.
+The factor of six was the four-channel round-robin and a 10 ms UART emitter
+period. Removing both gives **689 SPS on one channel**, where the RTL's σ = 2/8/85
+samples land at 2.9/11.6/123 ms against the papers' 2/8/85 ms — within 40%, with
+no kernel change and no `DATARATE` change. See
+[SAMPLE_RATE.md](CODE/V1/SAMPLE_RATE.md).
 
-**Trigger.** After V3 produces real signal. Then raise `DR` (0x3A → 0x3D), measure
-whether the 219 µs single-shot start-up is fixed or scales, and decide from the
-result rather than the model.
+**What remains open is narrower and should be written as a limitation:** the 2 ms
+reflex band is 1.4 samples at 689 SPS and about 3 samples even at `DR = 0x3D`. It
+is not validated by this hardware and should not be claimed as such.
+
+**The lesson worth keeping:** the trigger condition on this entry was "after V3
+produces real signal", which framed it as a hardware problem. Two firmware
+constants fixed it. Check what is actually spending the budget before designing
+around a limit.
 
 ---
 

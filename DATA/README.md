@@ -13,6 +13,9 @@ against.
 | `ttcgs_ADS_A.png` | piezoresistive channel, corner A, via the ADS114S08 divider |
 | `ttcgs_tap_C.png` | tap transient on corner C — fast-adapting character |
 | `ttcgs_MRE_rp.png` | LDC1101 RP channel responding to MRE compression |
+| `ttcgs_fsr_touch_fig4.png` | **Fig. 4** — causal DoG response to touch and release, FSR402 at 689 SPS |
+| `ttcgs_fsr_dog_vs_ma_fig5.png` | **Fig. 5** — causal DoG vs moving-average difference: rising edge and frequency response |
+| `ttcgs_fsr_modalities_fig6.png` | **Fig. 6** — seven touch modalities through the chain |
 | `ttcgs_poke_L.png` | LDC1101 L channel under a localized poke |
 
 > **To be completed by the author.** Each figure needs its capture conditions
@@ -22,6 +25,62 @@ against.
 > against another session's, because the LDC baselines shift with register
 > settings and with coil–skin geometry. The RP baseline in particular moves by
 > nearly 2× between `RP_SET` 0x46 and 0x47 for identical physical conditions.
+
+## The 2026-08-18 touch series
+
+Eleven captures on one FSR402, single channel (AIN5, corner B), 685-689 SPS,
+`dual_bfast.fs`. Seven are named by the contact that produced them:
+
+| file | contact | peak-to-peak | fast/slow band ratio |
+|---|---|---:|---:|
+| `touchA` | rapid light taps | 82.4% FS | 0.42 |
+| `touchB` | slow press | 95.2% | 0.29 |
+| `touchC` | rhythmic press modulation | 96.1% | 0.19 |
+| `touchD` | single press-release | 85.4% | 0.37 |
+| `touchE` | **light stroking** | **0.42%** | **0.96** |
+| `touchF` | fingernail scratch | 54.6% | 0.44 |
+| `touchG` | rapid rhythmic press, held | 94.5% | 0.43 |
+
+`touch2`..`touch5` are four 90 s runs of the touch/stable/adjust/release protocol.
+Figures 4 and 5 are built from `touch5`; Figure 6 from all seven letters.
+
+Two results worth quoting, and one caveat that must travel with them:
+
+- **`touchC` and `touchG` have the same amplitude** (96.1 / 94.5% FS) and band
+  ratios differing by 2.3x. Amplitude on a single channel does not separate them.
+- **Light stroking is 0.42% of full scale** — 138 counts, 820 to 1216 kΩ against a
+  972 kΩ rest baseline — and still reaches 35σ on DoG_fast.
+- **n = 1 per modality.** This shows the ratio varies systematically with contact
+  type. It is not a validated classifier: no error bars, no cross-session repeat.
+  `touchF` (scratch) sits at 0.44, inside the pressing cluster, so scratch and
+  stroke are not separated by this statistic.
+
+### Noise floor
+
+`touchE` contains 12.9 s of genuine rest either side of the stroking, and that is
+the reference used for every z-score in these figures:
+
+```
+raw sd 1.78 counts    rest baseline 362 counts = 972 kΩ
+G_s3 0.15    DoG_slow 0.42    DoG_fast 0.71
+```
+
+> Estimate it from the rest segments only, and **exclude the first ~1 s** — the
+> causal kernels are 256 taps and their fill transient dominates the variance.
+> Taking the standard deviation over a whole record instead inflated these by 10
+> to 100x on the first attempt, which understated every z-score reported from it.
+
+### One-bit halving in this series
+
+The read path halves a fraction of samples (see
+[`ads114s08_spi.v`](../CODE/V1/02_rtl_production/ads114s08_spi.v)). In this series
+it is **uniform**: the 1 MΩ baseline reads 181 counts where its true value is 362,
+and the 362 cluster is absent — 0 to 9 samples out of 8000-31000 per file. So
+these eleven files need a plain **×2**, not the rolling or DP correction.
+
+A uniform halving is invisible to `fix_shift.py --dp`, because doubling every
+sample doubles the cost it minimises. Check against a known resistor; do not infer
+it from the data alone.
 
 ## Logic-analyser captures
 

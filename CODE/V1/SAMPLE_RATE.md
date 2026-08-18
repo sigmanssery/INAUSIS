@@ -1,4 +1,4 @@
-# The sample rate does not match the specification
+# The sample rate does not match the specification — resolved 2026-08-18
 
 An open discrepancy, recorded here rather than buried. It affects figures in both
 manuscripts, so it should be settled before either is submitted.
@@ -7,6 +7,53 @@ The converter's behaviour was measured directly on 2026-08-07 with a logic
 analyser. That capture replaced two earlier conclusions on this page, both of
 which had been inferred from the UART stream rather than observed on the bus.
 The superseded text is kept at the bottom so the correction is auditable.
+
+## Resolved: the converter was never the limit
+
+**2026-08-18.** The gap closed to within 40% without touching `DATARATE`. It was
+never the ADC's speed. Two things upstream of it were spending the budget:
+
+1. **Four-channel round-robin.** The channel with a sensor on it waited out three
+   conversions of inputs sitting at 0-2 counts. Costs a factor of four.
+2. **The UART emitter's 10 ms burst period.** `STREAM_MODE = 0` in `top_dual.v`
+   printed one set of lines every 10 ms, so **every capture before 2026-08-17 is
+   100 Hz data regardless of what the converter was doing** — including the ones
+   that motivated this page. The 159 SPS measured below is the conversion rate,
+   not the logged rate.
+
+With `SINGLE_CH = 1` (AIN5, corner B) and `STREAM_MODE = 1`:
+
+```
+measured          689 SPS, 1.45 ms per sample     (11 captures, 685-689 Hz)
+sigma 2/8/85 smp  ->  2.9 / 11.6 / 123 ms
+the papers        ->  2   /  8   /  85  ms
+```
+
+Within 40% on all three bands, against 10x before. The RTL applies its sigmas in
+samples, so no kernel change is needed for the manuscripts' time constants to be
+approximately right — but the exact figures should be restated at 689 SPS rather
+than quoted as 2/8/85 ms.
+
+### What is still out of reach: the 2 ms reflex band
+
+`2 ms = 1.4 samples` at 689 SPS. Not resolvable, and raising `DATARATE` does not
+rescue it: `0x3A -> 0x3D` (4000 SPS) removes 1000 µs of the 1250 µs conversion
+and reaches roughly 1500 SPS, where 2 ms is **3 samples**. Still marginal.
+
+**This should be stated as a limitation rather than claimed as validated.**
+
+Measured onset edges, from `2026-08-17_FSR402_touch_raw.csv` (21 onsets):
+
+```
+fastest taps          1-3 samples    1.5-4.4 ms
+deliberate presses   40-90 samples   60-130 ms
+median               43 samples      62.9 ms
+```
+
+So ordinary touch dynamics are resolved with room to spare; only the reflex band
+is not. The figures in [DATA](../../DATA) are built on the deliberate-press edges.
+
+---
 
 ## What the papers say
 
