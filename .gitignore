@@ -21,3 +21,13 @@ __pycache__/
 Thumbs.db
 .DS_Store
 desktop.ini
+
+# Editor / tool backups kept in the working tree, not part of the record
+*.bak
+*.v[0-9]*bak
+*.v11attempt
+*.v11dbg
+*.clean
+*.nosustain
+*.presustain
+*.asbuilt

@@ -89,9 +89,11 @@ module ads114s08_spi #(
 // Counter widened to 8 bits to hold the larger count. Raise back once the
 // harness is short/properly grounded, if the extra sample rate is wanted.
 localparam CLK_DIV = 56;            // 27 MHz / 56 = ~482 kHz
+localparam PARK_PHASE = 28;         // idle phase: next strobe is the RISE at 55
 reg [7:0]  clk_cnt;
 reg        sclk_en;                 // rising-edge strobe
 reg        sclk_fall;               // falling-edge strobe
+reg        spi_start, spi_busy, spi_done;
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         clk_cnt   <= 0;
@@ -100,7 +102,14 @@ always @(posedge clk or negedge rst_n) begin
     end else begin
         sclk_en   <= 0;
         sclk_fall <= 0;
-        if (clk_cnt == CLK_DIV - 1) begin
+        // 2026-08-22: park at PARK_PHASE while idle so every transaction starts
+        // from the same divider phase AND meets it with a RISING strobe first --
+        // SCLK idles low and the ADS is SPI mode 1, so the first edge of a
+        // transaction must be a rise. 28 puts the first rise 28 clk (1.04 us)
+        // after CS falls, far beyond the 20 ns t_d(CSSC) the datasheet asks.
+        if (!spi_busy) begin
+            clk_cnt <= PARK_PHASE;
+        end else if (clk_cnt == CLK_DIV - 1) begin
             clk_cnt <= 0;
             sclk_en <= 1;
         end else if (clk_cnt == (CLK_DIV/2) - 1) begin
@@ -131,9 +140,9 @@ initial begin
 end
 
 // ─── SPI byte engine (VERBATIM original) + spi_done pulse ──────────────────────
-reg        spi_start, spi_busy, spi_done;
 reg [23:0] load_data, shift_out, spi_rx;
 reg [5:0]  total_bits, bit_cnt;
+reg        cs_rel;      // last fall seen; release CS on the next rise
 
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -145,29 +154,49 @@ always @(posedge clk or negedge rst_n) begin
         spi_rx    <= 24'h0;
         bit_cnt   <= 0;
         shift_out <= 24'h0;
+        cs_rel    <= 1'b0;
     end else begin
         spi_done <= 1'b0;
         if (spi_start && !spi_busy) begin
             ads_cs_n  <= 1'b0;
             ads_sclk  <= 1'b0;
             bit_cnt   <= total_bits - 1;
+            cs_rel    <= 1'b0;
             spi_busy  <= 1'b1;
             shift_out <= load_data;
         end
         if (spi_busy) begin
-            if (sclk_en) begin
-                ads_sclk <= 1'b1;
-                spi_rx   <= {spi_rx[22:0], ads_dout};   // sample MISO on rising
+            // ── SPI MODE 1, per ADS114S08 datasheet Fig. 1 / Fig. 2 ──────────
+            // DIN  is latched by the device on the SCLK FALLING edge
+            //      (t_su(DI) 15 ns before it, t_h(DI) 20 ns after it), so MOSI
+            //      must be launched on the RISING edge -- half a period, 1.0 us
+            //      of setup, instead of the setup violation launching it on the
+            //      fall used to give.
+            // DOUT is updated by the device on the SCLK RISING edge
+            //      (t_p(SCDO) 3-30 ns after it), so MISO must be sampled on the
+            //      FALLING edge. Sampling it on the rise, as this engine did,
+            //      raced that 3-30 ns window: sometimes the old bit, sometimes
+            //      the new one -- which is exactly the intermittent halving.
+            // One SCLK period now carries exactly one bit in each direction, so
+            // total_bits is the true bit count and every "+1" is gone.
+            if (sclk_en && !cs_rel) begin
+                ads_sclk  <= 1'b1;
+                ads_din   <= shift_out[23];
+                shift_out <= {shift_out[22:0], 1'b0};
             end
             if (sclk_fall) begin
-                ads_sclk  <= 1'b0;
-                ads_din   <= shift_out[23];             // shift MOSI on falling
-                shift_out <= {shift_out[22:0], 1'b0};
-                if (bit_cnt == 0) begin
-                    spi_busy <= 1'b0;
-                    ads_cs_n <= 1'b1;
-                    spi_done <= 1'b1;                   // completion pulse (new)
-                end else bit_cnt <= bit_cnt - 1;
+                ads_sclk <= 1'b0;
+                spi_rx   <= {spi_rx[22:0], ads_dout};
+                if (bit_cnt == 0) cs_rel <= 1'b1;   // hold CS one more half-period
+                else              bit_cnt <= bit_cnt - 1;
+            end
+            // t_d(SCCS): CS may not rise until 20 ns after the last falling
+            // edge. Releasing on the next rise strobe gives a full half period.
+            if (sclk_en && cs_rel) begin
+                ads_cs_n <= 1'b1;
+                spi_busy <= 1'b0;
+                spi_done <= 1'b1;
+                cs_rel   <= 1'b0;
             end
         end
     end
@@ -198,6 +227,13 @@ reg [4:0]  state, ret_state;
 reg [20:0] wait_cnt;          // up to ~78 ms
 reg [1:0]  ch_idx;
 
+// Self-heal: a converter that is alive never returns exactly 0 many times in a
+// row -- its own noise dithers the LSBs.  A run of them means the init writes
+// were lost, so redo the whole sequence rather than streaming zeros forever.
+// This is the same shape as the LDC driver's chip-ID re-init.
+localparam [7:0] ZERO_RUN_MAX = 8'd64;
+reg [7:0] zero_run;
+
 // ─── RD_REPEAT: read each conversion several times, keep the largest ──────────
 // The divider below free-runs, so CS falls at an arbitrary point in its 56-clock
 // period and the transaction contains either 16 or 17 SCLK rising edges. Reads
@@ -227,7 +263,7 @@ reg [1:0]  ch_idx;
 //
 // Compare on MAGNITUDE, not value: halving moves a negative reading UP, so a
 // plain unsigned max would pick the corrupted one on channels sitting near zero.
-localparam [2:0] RD_REPEAT = 3'd5;
+localparam [2:0] RD_REPEAT = 3'd1;   // BISECT state that built the 08-19 data
 reg [15:0] rd_max;
 reg [2:0]  rd_cnt;
 
@@ -239,11 +275,28 @@ endfunction
 // Each conversion is taken fully on the selected mux AFTER it settled, so there
 // is no continuous-mode boundary race -> no more intermittent 0x7F8D (~+FS) rails.
 
-localparam [20:0] POR_CYC = 21'd135000;   // ~5 ms power-on
+// 2026-08-28: raised 135000 (5 ms) -> 1350000 (50 ms).  With the bitstream in
+// the FPGA's embedded flash the board cold-starts: the converter's supply is
+// still ramping when configuration completes, the init WREGs land in a device
+// that is not listening, and it sits in its default state converting nothing.
+// Symptom on a cold plug-in, seen 2026-08-28: frames flow at 690/s with good
+// CRC, but every reading is exactly 0 and the flag engine's power-on
+// calibration therefore measures zero variance and marks all 18 dims dead
+// (dead = 0x3FFFF).  Reloading the SAME bitstream over JTAG works, because by
+// then the converter has been powered for minutes -- which is why this never
+// showed up in months of JTAG-loaded bring-up.
+localparam [20:0] POR_CYC = 21'd1350000;  // ~50 ms power-on
 localparam [20:0] GAP_CYC = 21'd270000;   // ~10 ms after RESET
 
 // REF: REFSEL=10 (internal 2.5V), REFCON=10 (always on). VERIFY/TUNE for tank/sensor.
-localparam [7:0] VAL_REF = 8'h0A;
+// 2026-08-25: REFSEL 10 (internal 2.5 V) -> 11 (AVDD/AVSS), i.e. RATIOMETRIC.
+// The sensor is a resistive divider excited from the analog supply, so measuring
+// it against an independent 2.5 V reference turns every millivolt of supply noise
+// into a proportional error on the reading -- observed as a constant 10.8% of
+// reading at both 240 and 480 counts, unchanged when the SPI clock was halved.
+// Referred to AVDD the reading becomes a pure resistance ratio and supply noise
+// cancels. REFCON stays 10 (internal reference always on) so it can still be used.
+localparam [7:0] VAL_REF = 8'h0E;
 // DATARATE(04h): [7]=0 [6]=CLK src [5]=MODE [4]=FILTER [3:0]=DR.
 // 0x3A = MODE 1 (single-shot) + FILTER 1, DR = 800 SPS, CLK = internal.
 //
@@ -280,6 +333,7 @@ always @(posedge clk or negedge rst_n) begin
         ads_start  <= 1'b0;
         rd_max     <= 16'h0;
         rd_cnt     <= 3'd0;
+        zero_run   <= 8'd0;
     end else begin
         spi_start  <= 1'b0;
         data_valid <= 1'b0;
@@ -301,17 +355,17 @@ always @(posedge clk or negedge rst_n) begin
         end
         // ── WREG REF (0x05) = internal 2.5V ref. {0x45,0x00,VAL_REF}, 25 bits
         S_REF_I: begin
-            load_data <= {8'h45, 8'h00, VAL_REF}; total_bits <= 6'd25;
+            load_data <= {8'h45, 8'h00, VAL_REF}; total_bits <= 6'd24;
             spi_start <= 1'b1; ret_state <= S_DR_I; state <= S_WAIT;
         end
         // ── WREG DATARATE = single-shot mode (config ONCE). {0x44,0x00,VAL_DR},25b
         S_DR_I: begin
-            load_data <= {8'h44, 8'h00, VAL_DR}; total_bits <= 6'd25;
+            load_data <= {8'h44, 8'h00, VAL_DR}; total_bits <= 6'd24;
             spi_start <= 1'b1; init_done <= 1'b1; ret_state <= S_MUX_I; state <= S_WAIT;
         end
         // ── per-channel SINGLE-SHOT: WREG INPMUX(ch). {0x42,0x00,mux}, 25 bits ──
         S_MUX_I: begin
-            load_data <= {8'h42, 8'h00, mux_table[ch_idx]}; total_bits <= 6'd25;
+            load_data <= {8'h42, 8'h00, mux_table[ch_idx]}; total_bits <= 6'd24;
             spi_start <= 1'b1; ret_state <= S_START_I; state <= S_WAIT;
         end
         // ── START (0x08): trigger exactly ONE conversion on the settled mux ────
@@ -329,7 +383,7 @@ always @(posedge clk or negedge rst_n) begin
         //    the conversion data onto MISO. Read it by clocking 16(+1) bits with NO
         //    RDATA command (0x12 would collide with that auto-output -> byte shift).
         S_RDATA_I: begin
-            load_data <= 24'h0; total_bits <= 6'd17;       // 16 data + 1 (engine BUG2)
+            load_data <= 24'h0; total_bits <= 6'd16;       // 16-bit result, one bit per SCLK period
             spi_start <= 1'b1; ret_state <= S_RDATA_C; state <= S_WAIT;
         end
         // ── capture: keep the largest-magnitude of RD_REPEAT reads (see above) ─
@@ -344,7 +398,21 @@ always @(posedge clk or negedge rst_n) begin
                 // after the read and railed 37% of samples at +FS on hardware;
                 // the write is also the gap the device needs between them.
                 if (!SINGLE_CH) ch_idx <= ch_idx + 2'd1;
-                state <= S_MUX_I;
+                if (((absv(spi_rx[15:0]) > absv(rd_max)) ? spi_rx[15:0]
+                                                         : rd_max) == 16'sd0) begin
+                    if (zero_run == ZERO_RUN_MAX) begin
+                        zero_run  <= 8'd0;
+                        init_done <= 1'b0;
+                        wait_cnt  <= 21'd0;
+                        state     <= S_POR;     // converter never woke: redo init
+                    end else begin
+                        zero_run <= zero_run + 8'd1;
+                        state    <= S_MUX_I;
+                    end
+                end else begin
+                    zero_run <= 8'd0;
+                    state    <= S_MUX_I;
+                end
             end else begin
                 if (absv(spi_rx[15:0]) > absv(rd_max)) rd_max <= spi_rx[15:0];
                 rd_cnt <= rd_cnt + 3'd1;

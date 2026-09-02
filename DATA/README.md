@@ -55,6 +55,22 @@ Two results worth quoting, and one caveat that must travel with them:
   `touchF` (scratch) sits at 0.44, inside the pressing cluster, so scratch and
   stroke are not separated by this statistic.
 
+> **2026-08-28/29 follow-up — the cross-session repeat was done, and it failed.**
+> Band ratios of this family are dominated by contact force, not by time
+> structure: `fast/g3` correlates **r = −0.912** with the contact amplitude and
+> force explains **83%** of its variance (30 recordings). Once force is matched,
+> the press classes differ by only 0-8%, and C vs G specifically by 0%.
+>
+> The first bullet above still holds as written -- *peak* amplitude does not
+> separate C from G -- but the separation it points at is not time structure
+> either: it is the *sustained* contact amplitude, which differs because G holds
+> contact while C releases. A force-invariant alternative was found
+> (`RMS(raw − G_s1) / RMS(DoG_fast)`, r = +0.01 with force) but **its
+> classification claim did not replicate across sessions either**.
+>
+> See `FINDINGS_2026-08-28_force-confound.md`, `SLIDE_DETECT_2026-08-28.md`,
+> and `SESSION_2026-08-28_LEDGER.md` for what survived.
+
 ### Noise floor
 
 `touchE` contains 12.9 s of genuine rest either side of the stroking, and that is

@@ -30,6 +30,10 @@ module dsp_chain #(
     input  wire signed [15:0]   sample_in,
     input  wire                 sample_valid,
 
+    // Passed straight through to dim AUX_DIM so a stimulus generator can label
+    // its own output.  Tie to 0 when unused; that dim's channel has no sensor.
+    input  wire signed [15:0]   aux_val,
+
     // LUT update (from SoC reverse channel via lut_parser) -> internal flag
     input  wire                 lut_wr,
     input  wire [DIM_BITS-1:0]  lut_dim,
@@ -40,6 +44,10 @@ module dsp_chain #(
     output wire [N_DIM-1:0]     mask_failsafe, // active-low  (0=event, fail-safe)
     output wire [N_DIM-1:0]     dead,          // 1 = dim's calibration found var=0
     output wire [N_DIM*16-1:0]  dog_flat,      // 18 dims x 16-bit DoG values
+    output wire                 slide_flag,    // last contact was a slide
+    output wire                 slide_valid,   // pulses when slide_flag updates
+    output wire                 in_contact,
+    output wire [N_DIM-1:0]     uncal,        // 1 = dim still calibrating
     output wire                 chain_busy
 );
 
@@ -75,10 +83,51 @@ module dsp_chain #(
 
     // store each dim's DoG value (for the frame packer). dim = ch*3 + {0,1,2}
     reg signed [15:0]    dog_store [0:N_DIM-1];
+
+    // Dim RAW_DIM carries the raw CH0 sample instead of ch4's DoG_fast.  All three
+    // DoG outputs are low-passed -- G(s3) to 1.8 Hz, DoG_fast -3 dB by 70 Hz -- so
+    // nothing above 70 Hz has ever reached the host, and the 2026-08-28 corpus
+    // could not test whether contact types differ up there.  ch4/ch5 have no
+    // sensor (dead map 0x3F000), so this slot was carrying zeros.
+    // Only dog_flat is overridden: the flag engine is fed from lat_* in the
+    // feeder FSM below, so its behaviour and the dead map are unchanged --
+    // dim RAW_DIM still reports dead=1 while carrying live data.
+    localparam RAW_DIM = 12;
+    localparam AUX_DIM = 13;
+    // Bring-up scaffolding: dims 14-17 carry slide_detect's internals so a host
+    // capture can be compared against the offline model sample by sample.  That
+    // is how the signedness bug in the squarer was located -- reading the code
+    // had failed four times.  Off for anything whose resource figures are quoted.
+    localparam DEBUG_TAPS = 1'b1;
+    reg signed [15:0]    raw_lat;
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)                          raw_lat <= 16'sd0;
+        else if (sample_valid && ch_id == 0) raw_lat <= sample_in;
+    end
+
+    wire [15:0] dbg_hp_w, dbg_fast_w, dbg_n_w;
+    wire signed [15:0] dbg_hpnow_w;
+    // Force-invariant slide/press decision, made on chip once per contact.
+    // Fed from ch0 only: that is the channel with the sensor on it.
+    slide_detect u_slide (
+        .clk(clk), .rst_n(rst_n),
+        .raw(raw_lat), .g1(dog_G1), .fast(dog_fast), .g3(dog_G3),
+        .valid(dog_result_valid && (dog_ch_done == 0)),
+        .thr_wr(1'b0), .thr_data(16'd0),
+        .is_slide(slide_flag), .decided(slide_valid), .in_contact(in_contact),
+        .dbg_hp(dbg_hp_w), .dbg_fast(dbg_fast_w), .dbg_n(dbg_n_w), .dbg_hp_now(dbg_hpnow_w)
+    );
+
     genvar gi;
     generate
         for (gi=0; gi<N_DIM; gi=gi+1) begin : g_dogflat
-            assign dog_flat[gi*16 +: 16] = dog_store[gi];
+            assign dog_flat[gi*16 +: 16] =
+                (gi == RAW_DIM) ? raw_lat :
+                (gi == AUX_DIM) ? aux_val :
+                (DEBUG_TAPS && gi == 14) ? $signed(zdbg_wl) :
+                (DEBUG_TAPS && gi == 15) ? $signed(zdbg_al) :
+                (DEBUG_TAPS && gi == 16) ? $signed(zdbg_wd) :
+                (DEBUG_TAPS && gi == 17) ? $signed(zdbg_ad) : dog_store[gi];
         end
     endgenerate
 
@@ -142,6 +191,7 @@ module dsp_chain #(
     // Flag engine (multi-dimension, time-multiplexed)
     //=========================================================================
     wire [DIM_BITS-1:0] fdim; wire fout, fvalid;
+    wire [15:0] zdbg_wl, zdbg_al, zdbg_wd, zdbg_ad;
 
     zscore_flag_multi #(.N_DIM(N_DIM), .DIM_BITS(DIM_BITS)) u_flag (
         .clk(clk), .rst_n(rst_n),
@@ -149,7 +199,9 @@ module dsp_chain #(
         .mode_roc(flag_mode_roc),
         .lut_wr(lut_wr), .lut_dim(lut_dim), .lut_thr(lut_thr),
         .flag_dim(fdim), .flag_out(fout), .flag_valid(fvalid),
-        .mask(mask), .mask_failsafe(mask_failsafe), .dead(dead)
+        .mask(mask), .mask_failsafe(mask_failsafe), .dead(dead), .uncal(uncal),
+        .dbg_wcnt_live(zdbg_wl), .dbg_acnt_live(zdbg_al),
+        .dbg_wcnt_dead(zdbg_wd), .dbg_acnt_dead(zdbg_ad)
     );
 
     // The flag engine is internally pipelined (3 stages): its mask/dead results

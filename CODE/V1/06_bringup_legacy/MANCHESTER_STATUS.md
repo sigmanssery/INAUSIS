@@ -1,3 +1,20 @@
+> **[2026-08-27 更新] 本檔的「剩下的問題」章節已過時,勿依此判斷現況。**
+>
+> byte 銜接問題**已解決**,走的是本檔提的第二條修法:`manchester_rx.v` 在 SFD 鎖定後
+> 改用**純計時取樣**(bit 中心取樣,不再依賴 byte 進入邊緣),因此 `manchester_enc.v`
+> 在 byte 之間回 IDLE 不再造成漏位元組。
+>
+> **驗證**:2026-08-27 於 EDA Playground 執行 `eda_packmanch_all.v`
+> (packer -> CRC-16 -> Manchester TX -> 單線 -> RX -> 解碼),
+> 結果 `received 51 bytes` / `CRC exp==got` / **PASS**,零錯誤。
+> 測試台自行獨立計算 CRC,非以 DUT 比 DUT。
+>
+> **仍未完成的是硬體**:完整系統 `ttcgs_board` 從未燒錄過(`gowin_syn/` 無 board
+> bitstream,`inausis.cst` 亦無 UART 腳位)。論文中的特徵是由 `top_dual` 的 ASCII
+> UART 取得原始 counts 後,以定點模型離線計算,**不是**經由 Manchester 取得。
+
+---
+
 # 曼徹斯特傳輸層 - 進度與下次起點
 
 ## 已完成且驗證 ✓

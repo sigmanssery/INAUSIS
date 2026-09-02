@@ -65,6 +65,9 @@ def main():
     ch = [None] * 4
     seen = [False] * 4
     any_ch = [False]          # has this stream ever carried CHx lines?
+    full_set = [False]        # has a complete CH0-3 set ever arrived?
+    saw_l    = [False]        # has any L line ever arrived?
+    ch0_peak = [None]         # session peak of CH0, for the live line
     rp = l = st = cid = None
     id_ff  = [0]              # CHIP_ID == 0xFF -> MISO floating, LDC off the bus
     id_odd = [0]              # CHIP_ID neither 0xD4 nor 0x00/0xFF (unexpected)
@@ -99,6 +102,15 @@ def main():
                     # one row per full CH0-3 set (dual stream / ADS-only bitstream)
                     if all(seen):
                         seen = [False] * 4
+                        full_set[0] = True
+                        emit = True
+                    elif i == 0 and not full_set[0] and not saw_l[0]:
+                        # CH0-only bitstream (the 689 SPS resistive recording
+                        # schedule): no CH1-3 and no L, so neither of the other
+                        # two pacing rules can ever fire and the logger wrote
+                        # zero rows. Pace off CH0 itself. Once an L has been
+                        # seen this never triggers again, so the dual-modal and
+                        # LDC-only streams keep their original pacing.
                         emit = True
                 else:
                     m = pat_rp.search(raw)
@@ -128,9 +140,18 @@ def main():
                             m = pat_l.search(raw)
                             if m:
                                 l = int(m.group(1), 16)
-                                # LDC-only fast stream: no CHx will ever arrive, so
-                                # pace rows off L or nothing would ever be written
-                                if not any_ch[0]:
+                                saw_l[0] = True
+                                # Pace rows off L whenever the stream does not
+                                # deliver complete CH0-3 sets. That covers the
+                                # LDC-only bitstream (no CHx at all) AND the
+                                # scheduled dual mode, which sends CH0 every
+                                # fourth period and CH1-3 never -- keying on
+                                # any_ch alone silently wrote zero rows there,
+                                # because CH0 set any_ch while all(seen) could
+                                # never become true. In the bursts that do carry
+                                # a full set, the set completes before L arrives,
+                                # so this never double-emits.
+                                if not full_set[0]:
                                     emit = True
                 if not emit:
                     continue
@@ -151,10 +172,19 @@ def main():
                         f"{rp_h},{l_h},{bad},{st_s},{no_osc},{id_s},{mark}\n")
                 f.flush()
                 rows += 1
+                if ch[0] is not None:
+                    ch0_peak[0] = ch[0] if ch0_peak[0] is None else max(ch0_peak[0], ch[0])
                 if rows % 20 == 0 or mark:
                     ldc_s = ("LDC --" if rp is None else
                              f"RP={rp:5d} (0x{rp:04X})  L={l:4d} (0x{l:04X})")
-                    line = (f" t={t:7.2f}s  rows={rows:6d}  {ldc_s}  "
+                    # CH0 live, with a session peak-hold: the press has to be kept
+                    # off the rail (32767) or the sustained part of the gesture is
+                    # flat-topped and carries no temporal structure.
+                    railing = ch[0] is not None and ch[0] >= 32700
+                    ch0_s = ("CH0=  ----" if ch[0] is None else
+                             f"CH0={ch[0]:6d}{'  RAIL!' if railing else '       '}"
+                             f" peak={ch0_peak[0]:6d}")
+                    line = (f" t={t:7.2f}s  rows={rows:6d}  {ch0_s}  {ldc_s}  "
                             f"ID={id_s or '--'} ST={st_s or '--'} "
                             f"idFF={id_ff[0]:4d} osc={osc_stalls[0]:5d}  "
                             f"bad={'Y' if bad else '.'}  {mark}")

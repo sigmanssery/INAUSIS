@@ -106,6 +106,24 @@ module halfduplex_ctrl #(
     // Direction state machine: ping-pong
     //=========================================================================
     localparam D_TX=2'd0, D_TURN1=2'd1, D_RX=2'd2, D_TURN2=2'd3;
+
+    // Reverse-channel watchdog. Without it D_RX waits for a reply that a
+    // silent or absent SoC never sends, and because pack_start requires
+    // dir_state==D_TX the forward stream stops with it -- one unanswered
+    // exchange halts the sensor. A 50-byte reverse frame takes about 6400
+    // clocks at HALF_CLKS=8, so 2^16 (2.4 ms at 27 MHz) is an order of
+    // magnitude of headroom before we give up and reclaim the line.
+    //
+    // But it must not be generous: dir_state has to return to D_TX before the
+    // next frame can be packed, so this timeout sets the frame cadence whenever
+    // the partner is silent. At 2.4 ms it capped frames at ~380/s against a
+    // 689 Hz sample rate -- every second sample went unframed. A reply begins
+    // within a byte or two of the turnaround, so 8192 clocks (303 us at 27 MHz,
+    // about nineteen bit times) is ample to recognise one starting, and leaves
+    // the forward cadence set by the sample period rather than by this wait.
+    localparam [15:0] RX_TIMEOUT = 16'd8192;
+    reg [15:0] rx_wd;
+    reg        rev_timeout;
     reg [1:0]  dstate;
     reg [15:0] turn_cnt;
 
@@ -117,6 +135,8 @@ module halfduplex_ctrl #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             dstate    <= D_TX;
+            rx_wd     <= 16'd0;
+            rev_timeout <= 1'b0;
             drive_en  <= 1'b1;       // start by driving (forward)
             rx_en     <= 1'b0;
             tx_start_r<= 1'b0;
@@ -156,6 +176,7 @@ module halfduplex_ctrl #(
                     rx_en       <= 1'b1;       // start listening
                     rev_cnt     <= 8'd0;
                     rev_got_len <= 1'b0;
+                    rx_wd       <= 16'd0;
                     rcrc_clr    <= 1'b1;       // reset reverse CRC for new frame
                     dstate      <= D_RX;
                 end else turn_cnt <= turn_cnt + 16'd1;
@@ -165,6 +186,15 @@ module halfduplex_ctrl #(
             D_RX: begin
                 drive_en <= 1'b0;
                 rx_en    <= 1'b1;
+                // watchdog: any received byte feeds it; running out means the
+                // partner is silent, so abandon the exchange and reclaim TX.
+                if (rx_valid_w) rx_wd <= 16'd0;
+                else if (rx_wd == RX_TIMEOUT) begin
+                    rev_timeout <= 1'b1;
+                    rev_crc_ok  <= 1'b0;
+                    turn_cnt    <= 16'd0;
+                    dstate      <= D_TURN2;
+                end else rx_wd <= rx_wd + 16'd1;
                 if (rx_valid_w) begin
                     if (!rev_got_len) begin
                         // first byte after SFD = LENGTH (number of entry bytes).

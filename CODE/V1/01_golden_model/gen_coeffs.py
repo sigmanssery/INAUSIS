@@ -11,6 +11,20 @@ print(f"taps={N_TAPS}, sigmas={SIGMAS}, Q{FRAC}\n")
 all_coeffs = {}
 for s, k in zip(SIGMAS, kernels):
     q = np.round(k * (1 << FRAC)).astype(int)
+    # Force the sum to exactly 1.0 in Q15. Plain rounding leaves a residual --
+    # for sigma=85 the kernel is spread over 256 taps whose individual values are
+    # tiny (max 307), and the roundings accumulate to +7, i.e. a DC gain of
+    # 1.000214. The datapath truncates its 16-bit output rather than saturating,
+    # so a full-scale input then produced 32773 and wrapped to -32763. Observed
+    # on hardware 2026-08-27: a sustained press pinned G(sigma3) at negative full
+    # scale while the mask stayed asserted. The residual is spread one LSB at a
+    # time over the largest coefficients, where it costs the least relatively.
+    resid = (1 << FRAC) - int(q.sum())
+    if resid:
+        order = np.argsort(-np.abs(q))
+        for j in range(abs(resid)):
+            q[order[j % len(order)]] += 1 if resid > 0 else -1
+    assert q.sum() == (1 << FRAC), (s, q.sum())
     all_coeffs[s] = q
     nz = np.sum(q != 0)
     print(f"sigma={s:5.1f}: nonzero taps={nz:3d}/{N_TAPS}, "

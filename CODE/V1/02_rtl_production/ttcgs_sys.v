@@ -35,6 +35,7 @@ module ttcgs_sys #(
     input  wire [CH_BITS-1:0]  ch_id,
     input  wire signed [15:0]  sample_in,
     input  wire                sample_valid,
+    input  wire signed [15:0]  aux_val,      // -> dsp_chain dim AUX_DIM
     input  wire                period_end,    // pulse after last channel of a period
     input  wire [31:0]         timestamp,
 
@@ -45,8 +46,21 @@ module ttcgs_sys #(
     output wire [N_DIM-1:0]    mask,          // active-high (1 = event)
     output wire [N_DIM-1:0]    mask_failsafe, // active-low  (0 = event); GPIO needs pull-down
     output wire [N_DIM-1:0]    dead,          // 1 = dim's calibration found var=0
-    output wire [1:0]          dir_state      // 0=TX,1=TURN1,2=RX,3=TURN2
+    output wire [1:0]          dir_state,     // 0=TX,1=TURN1,2=RX,3=TURN2
+
+    // bring-up observation tap: the packed frame bytes, before Manchester.
+    // Purely an output; nothing here feeds back into the datapath.
+    output wire                mir_wr_en,
+    output wire [5:0]          mir_wr_addr,
+    output wire [7:0]          mir_wr_data,
+    output wire [6:0]          mir_len,
+    output wire                mir_done
 );
+    assign mir_wr_en   = pk_wr_en;
+    assign mir_wr_addr = pk_wr_addr;
+    assign mir_wr_data = pk_wr_data;
+    assign mir_len     = pk_len;
+    assign mir_done    = pk_done;
     localparam D_TX = 2'd0;
 
     //------------------------------------------------------------------ DSP chain
@@ -57,12 +71,18 @@ module ttcgs_sys #(
     wire [N_DIM*16-1:0] chain_dog_flat;
     wire                chain_busy;
 
+    wire slide_f, slide_v, contact_f;
+    wire [N_DIM-1:0] uncal_w;
     dsp_chain #(.N_CH(N_CH), .CH_BITS(CH_BITS), .N_DIM(N_DIM), .DIM_BITS(DIM_BITS)) u_chain (
         .clk(clk), .rst_n(rst_n),
         .ch_id(ch_id), .sample_in(sample_in), .sample_valid(sample_valid),
+        .aux_val(aux_val),
         .lut_wr(lut_wr), .lut_dim(lut_dim), .lut_thr(lut_thr),   // reverse-channel writes
         .mask(chain_mask), .mask_failsafe(chain_mask_fs), .dead(chain_dead),
-        .dog_flat(chain_dog_flat), .chain_busy(chain_busy)
+        .dog_flat(chain_dog_flat),
+        .slide_flag(slide_f), .slide_valid(slide_v), .in_contact(contact_f),
+        .uncal(uncal_w),
+        .chain_busy(chain_busy)
     );
     assign mask          = chain_mask;
     assign mask_failsafe = chain_mask_fs;
@@ -92,7 +112,7 @@ module ttcgs_sys #(
     frame_packer u_pk (
         .clk(clk), .rst_n(rst_n), .pack_start(pack_start),
         .dog_flat(chain_dog_flat), .mask(chain_mask), .dead(chain_dead),
-        .timestamp(timestamp), .status({7'b0, 1'b1}),
+        .timestamp(timestamp), .status({4'b0, |uncal_w, contact_f, slide_f, 1'b1}),
         .wr_en(pk_wr_en), .wr_addr(pk_wr_addr), .wr_data(pk_wr_data),
         .payload_len(pk_len), .frame_start_out(pk_fstart), .done(pk_done)
     );

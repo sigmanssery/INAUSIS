@@ -235,29 +235,89 @@ module top_dual (
     //                                             touch/release figures
     //   2 = LDC only, 1 ms (1 kHz)   slots 4-7  — RP/L/ST/ID at the LDC's own
     //                                             loop rate, for transients
+    //   3 = both, 500 us (2 kHz)     scheduled  — RP and L every period, CH0
+    //                                             every 4th, ST and ID at their
+    //                                             own periods (see below)
+    //
     // 2026-08-17: mode 1 for the Fig 4-5 touch/release capture. Mode 0's 10 ms
     // burst caps the logged data at 100 Hz no matter how fast the ADS converts,
     // which is why single-channel mode did not change the row rate at first.
-    localparam [1:0] STREAM_MODE = 2'd1;
+    //
+    // 2026-08-21: mode 3, for the dual-modal capture. The point is that the two
+    // converters do NOT have to share a rate. dog_fir_multi keeps a head pointer
+    // per channel and runs its MAC on that channel's sample_valid, so nothing
+    // downstream assumes lockstep; only the coefficient ROM is shared, which
+    // means sigma is fixed in SAMPLES and a faster channel simply gets faster
+    // time constants. At 2 kHz the inductive DoG_fast sits at ~96 Hz instead of
+    // the 48 Hz it has at 1 kHz, which is the mechanism Section III-B names for
+    // eventually reaching the RA-II band.
+    //
+    // 2026-08-21 measured: the LDC cannot feed 2 kHz at all. RP+L at RESP_TIME
+    // 6144 converts in 1183 us = 845 SPS (see ldc1101_spi.v), so the period is
+    // 1 ms -- fast enough that nothing is missed, slow enough that the emitted
+    // stream is mostly fresh samples. That is still 9x the 111 Hz this stream
+    // ran at before, and it puts the inductive channel at the same order as the
+    // 689 Hz resistive path, so one sigma set maps to comparable bands on both.
+    //
+    // Historical note on the ceiling: no period may carry
+    // more than three lines (3 x 119.4 us = 358 us). At 500 us that is 72% of
+    // the link; at 400 us it would be 90%, and 95% is what produced ~12% corrupt
+    // reads the last time the link was pushed. Going faster than this needs the
+    // binary frame, not a faster cable.
+    localparam [1:0] STREAM_MODE = 2'd3;
+    // 2026-08-26: resistive re-recording schedule. Mode 3 emits CH0 only on every
+    // 4th period, so the logged CH0 rate is the UART schedule divided by four --
+    // 215-253 /s no matter what the converter does, which is what made the ADS data
+    // rate look stuck. With CH0_ONLY the period carries CH0 alone (RP and L are not
+    // needed for the resistive captures) at 39190 clk = 1.4514 ms = 688.9 /s, the
+    // 689 SPS the Section IV kernels are defined at. Set to 0 to restore dual-modal.
+    localparam CH0_ONLY = 1'b1;
 
     reg [2:0]  slot; reg [15:0] val; reg [22:0] dcnt; reg acq;
-    localparam [22:0] PERIOD = (STREAM_MODE == 2'd0) ? 23'd270000   // ~10 ms
-                                                     : 23'd27000;   // ~1 ms
+    localparam [22:0] PERIOD = CH0_ONLY               ? 23'd40555   // measured: 39190 gave 713 /s, so 39190*713/689 = 40555 -> 689 /s
+                             : (STREAM_MODE == 2'd0) ? 23'd270000   // ~10 ms
+                             : (STREAM_MODE == 2'd3) ? 23'd27000   // 1 ms
+                                                     : 23'd27000;  // ~1 ms
     localparam [2:0]  SLOT_FIRST = (STREAM_MODE == 2'd2) ? 3'd4 : 3'd0;
     localparam [2:0]  SLOT_LAST  = (STREAM_MODE == 2'd1) ? 3'd3 : 3'd7;
     localparam [2:0] S_WAIT=3'd0, S_BUILD=3'd1, S_HEX=3'd2, S_FIRE=3'd3,
                      S_BUSY=3'd4, S_NEXT=3'd5;
     reg [2:0] sstate;
+
+    // mode 3 schedule. ST and ID are placed on periods 1 and 2 mod 64, neither of
+    // which is 0 mod 4, so they never land on a CH0 period and no period ever
+    // carries four lines.
+    reg  [5:0] pcnt;
+    wire want_ch0 = CH0_ONLY ? 1'b1 : (pcnt[1:0] == 2'd0);
+    wire want_st  = (pcnt      == 6'd1);
+    wire want_id  = (pcnt      == 6'd2);
+    wire [2:0] m3_first = want_ch0 ? 3'd0 : 3'd4;   // CH0_ONLY -> always 0
+    wire [2:0] m3_last  = want_id ? 3'd7
+                        : (want_st ? 3'd6 : (CH0_ONLY ? 3'd0 : 3'd5));
+    wire [2:0] m3_next  = CH0_ONLY
+                          ? ((slot == 3'd0) ? (want_st ? 3'd6 : 3'd7) : (slot + 3'd1))
+                          : ((slot == 3'd0)            ? 3'd4 :
+                             (slot == 3'd5 && want_id) ? 3'd7 : (slot + 3'd1));
+    wire [2:0] slot_first_w = (STREAM_MODE == 2'd3) ? m3_first : SLOT_FIRST;
+    wire [2:0] slot_last_w  = (STREAM_MODE == 2'd3) ? m3_last  : SLOT_LAST;
+    wire [2:0] slot_next_w  = (STREAM_MODE == 2'd3) ? m3_next  : (slot + 3'd1);
     always @(posedge clk27 or negedge rst_n) begin
         if (!rst_n) begin
             sstate<=S_WAIT; slot<=SLOT_FIRST; dcnt<=23'd0; print_start<=1'b0; acq<=1'b0; val<=16'd0;
-            st_clr<=1'b0;
+            st_clr<=1'b0; pcnt<=6'd0;
         end else begin
             print_start <= 1'b0;
             st_clr      <= 1'b0;
+            // dcnt free-runs across every state, so PERIOD is the period. It used
+            // to advance only in S_WAIT, which made the real interval PERIOD plus
+            // however long the burst took: measured 2026-08-21 at 1385 Hz against
+            // a 2000 Hz setting, the missing 222 us being the UART time of the
+            // 2.3 lines an average period carries. If a burst ever overruns, dcnt
+            // is already past PERIOD on return and the next period fires at once,
+            // so the stream runs late rather than losing its place.
+            dcnt        <= dcnt + 23'd1;
             case (sstate)
-            S_WAIT: if (dcnt==PERIOD) begin dcnt<=23'd0; slot<=SLOT_FIRST; sstate<=S_BUILD; end
-                    else dcnt<=dcnt+23'd1;
+            S_WAIT: if (dcnt>=PERIOD) begin dcnt<=23'd0; slot<=slot_first_w; sstate<=S_BUILD; end
             S_BUILD: begin
                 case (slot)
                 3'd0: begin pbuf[0]<="C";pbuf[1]<="H";pbuf[2]<="0";pbuf[3]<=":"; val<=ch0; end
@@ -284,8 +344,9 @@ module top_dual (
             end
             S_FIRE: begin print_start<=1'b1; sstate<=S_BUSY; end
             S_BUSY: if (!print_busy && !print_start) sstate<=S_NEXT;
-            S_NEXT: if (slot==SLOT_LAST) begin acq<=~acq; sstate<=S_WAIT; end
-                    else begin slot<=slot+3'd1; sstate<=S_BUILD; end
+            S_NEXT: if (slot==slot_last_w) begin
+                        acq<=~acq; pcnt<=pcnt+6'd1; sstate<=S_WAIT;
+                    end else begin slot<=slot_next_w; sstate<=S_BUILD; end
             endcase
         end
     end

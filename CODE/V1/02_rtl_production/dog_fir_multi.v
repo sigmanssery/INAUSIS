@@ -91,6 +91,23 @@ module dog_fir_multi #(
     reg [CH_BITS-1:0]    cur_ch;        // channel being processed
     reg [1:0]            scale;         // 0=s2,1=s8,2=s85
     reg [ADDR_BITS:0]    tap;           // 0..N_TAPS (one extra to drain pipeline)
+    // Saturate rather than truncate on the way down to 16 bits. Two places can
+    // overflow. The accumulator shift: a kernel whose Q15 coefficients sum to
+    // slightly over unity turns a full-scale input into a value just past
+    // 32767, and truncation wraps it to negative full scale -- observed on
+    // hardware 2026-08-27, where a sustained press pinned G(sigma3) at -32763
+    // while the mask stayed asserted, i.e. the reported grip level inverted.
+    // And the difference: G1 - G2 of two 16-bit values needs 17 bits, so a
+    // steep enough edge overflows even with exactly-normalised coefficients.
+    function signed [15:0] sat16;
+        input signed [38:0] v;
+        begin
+            if      (v >  39'sd32767) sat16 = 16'sh7FFF;
+            else if (v < -39'sd32768) sat16 = 16'sh8000;
+            else                      sat16 = v[15:0];
+        end
+    endfunction
+
     reg signed [38:0]    acc;
     reg signed [15:0]    g_result [0:2];
 
@@ -160,7 +177,7 @@ module dog_fir_multi #(
             //-----------------------------------------------------------------
             // SDONE: acc now holds the full 256-tap sum for this scale.
             SDONE: begin
-                g_result[scale] <= acc >>> FRAC;
+                g_result[scale] <= sat16(acc >>> FRAC);
                 acc <= 39'sd0;
                 tap <= 0;
                 if (scale == 2'd2) state <= DONE;
@@ -174,8 +191,10 @@ module dog_fir_multi #(
                 G_s1     <= g_result[0];
                 G_s2     <= g_result[1];
                 G_s3     <= g_result[2];
-                DoG_fast <= g_result[0] - g_result[1];
-                DoG_slow <= g_result[1] - g_result[2];
+                DoG_fast <= sat16($signed({{23{g_result[0][15]}}, g_result[0]})
+                                - $signed({{23{g_result[1][15]}}, g_result[1]}));
+                DoG_slow <= sat16($signed({{23{g_result[1][15]}}, g_result[1]})
+                                - $signed({{23{g_result[2][15]}}, g_result[2]}));
                 ch_done  <= cur_ch;
                 result_valid <= 1'b1;
                 state    <= IDLE;

@@ -2,7 +2,7 @@
 //=============================================================================
 // ldc1101_spi.v  — LDC1101 sampling SPI master (inductive L + RP)
 //
-// REWRITTEN 2026-06-17 after real-hardware bring-up, and revised again through
+// REWRITTEN 2026-06-17 after real-hardware bring-up. Two fixes vs the prior
 // version (both proven on HW via gowin_syn/ldc_regcheck.v, which read
 // CHIP_ID=0xD4 and round-tripped a WREG/RREG):
 //
@@ -58,12 +58,30 @@ module ldc1101_spi (
 );
     localparam integer HALF       = 27;        // ~500 kHz SCLK (period = 2*HALF)
     localparam [22:0]  POR_DELAY  = 23'd135000; // ~5 ms power-on wait
-    // ~1 kHz RP/L sample loop. FREE_RUN drops the throttle so the loop is paced
-    // only by the SPI reads + the LDC's own conversion (RESP_TIME 6144 at
-    // fSENSOR ~5 MHz = 403 us, i.e. ~2.5 kSPS) — needed to resolve impact
-    // transients and MRE viscoelastic ringing, which alias badly at 93 SPS.
+    // RP/L sample loop, throttled to ~1 kHz ON PURPOSE. Do not "optimise" this
+    // without measuring RP: the loop must be LONGER than the device's conversion
+    // or the five reads straddle a conversion boundary and RP_DATA_L/RP_DATA_H
+    // come from different conversions.
+    //
+    // The conversion time is RESP_TIME/fSENSOR. Reading fSENSOR back from the
+    // hardware (fSENSOR = fCLKIN*RESP_TIME/(3*L_DATA), fCLKIN = 3.375 MHz,
+    // L_DATA = 1331 measured 2026-08-21) gives fSENSOR = 5.19 MHz and therefore
+    //     6144 / 5.19 MHz = 1183 us  =  845 SPS.
+    // An earlier comment here said 403 us; that was wrong by 2.9x and is what
+    // led to the loop being shortened. Measured consequence, three runs each:
+    //     LOOP_DELAY 27000 -> loop 1288 us = 1.09x conversion -> RP sd  115
+    //     LOOP_DELAY  4500 -> loop  455 us = 0.38x            -> RP sd  420
+    //     LOOP_DELAY    10 -> loop  288 us = 0.24x            -> RP sd 1030
+    // L is unharmed at every setting (sd < 1) because it barely moves between
+    // conversions, so mixing its bytes costs nothing; RP moves ~115 counts, so
+    // mixing its bytes costs everything.
+    //
+    // 845 SPS IS THE CEILING in RP+L at RESP_TIME 6144. More samples per second
+    // needs a shorter RESP_TIME, which costs resolution (DIG_CONF 0x?6 = 3072 ->
+    // 1690 SPS, but RP sd went 127 -> 185 when that was tried), or LHR mode,
+    // which gives L only and so cannot serve a dual-modal readout.
     localparam FREE_RUN = 1'b0;
-    localparam [22:0]  LOOP_DELAY = FREE_RUN ? 23'd10 : 23'd27000;
+    localparam [22:0]  LOOP_DELAY = FREE_RUN ? 23'd4500 : 23'd27000;
 
     localparam READ_BIT = 1'b1, WRITE_BIT = 1'b0;
     localparam [6:0] REG_RP_SET=7'h01, REG_TC1=7'h02, REG_TC2=7'h03,
@@ -230,6 +248,20 @@ module ldc1101_spi (
         endcase
     end
     reg [7:0] rp_lo, rp_hi, l_lo, l_hi;
+    // Two ways the data registers park, both seen on 2026-08-21:
+    //   RP = 0xFFFF          - the read itself fails / MISO floats
+    //   RP bit-identical     - DRDYB never goes ready, so RP_DATA and L_DATA
+    //     for many loops       hold the last valid conversion. 5/10/15 of the
+    //                          percussor sweep all froze at 24165, a perfectly
+    //                          plausible number, which is why checking for
+    //                          0xFFFF alone missed it and three 20 s captures
+    //                          were lost.
+    // Rest noise on RP is ~100 counts, so consecutive bit-identical readings do
+    // not occur in normal operation; 64 of them is unambiguous and is ~82 ms.
+    wire rp_railed = (rp_hi == 8'hFF) && (rp_lo == 8'hFF);
+    reg  [15:0] rp_prev;
+    reg  [6:0]  rp_same;
+    wire rp_frozen = (rp_same == 7'd64);
     // STATUS(0x20) byte + POR auto-recovery. The device only gets configured once
     // at power-on, so ANY later brown-out/glitch leaves it parked in reset:
     // POR_READ(bit0)=1, DRDYB(bit6) never ready, RP/L read 0xFFFF forever — seen
@@ -237,7 +269,18 @@ module ldc1101_spi (
     // Re-run the config list when POR_READ stays set, so it self-heals.
     reg [7:0] st_byte;
     reg [3:0] por_cnt;
-    localparam [3:0] POR_RETRY = 4'd7;   // consecutive POR reads before reconfig
+    localparam [3:0] POR_RETRY = 4'd7;   // consecutive bad reads before reconfig
+
+    // The device has a second way of parking that POR_READ does not catch: the
+    // data registers freeze with RP_DATA = 0xFFFF while STATUS still reads a
+    // perfectly healthy 0x7C (bit7 NO_SENSOR_OSC clear, bit0 POR_READ clear) and
+    // CHIP_ID still answers 0xD4. Seen twice on 2026-08-21, both times after a
+    // galvanised steel plate was brought close enough to push the tank outside
+    // the RP_SET window; it does not come back when the plate is removed, and
+    // before this it took a manual FPGA reset. Two 60 s captures were lost that
+    // way. RP never reads full scale in normal operation -- the healthy range on
+    // this tank is 6k-34k -- so a sustained 0xFFFF is the signature, and
+    // POR_RETRY consecutive loops of it is not something a transient can fake.
 
     //--------------------------------------------------- control FSM (race-free)
     // 16-bit transactions: WREG {0,addr}+data ; RREG {1,addr}+dummy -> spi_rx[7:0]
@@ -258,6 +301,7 @@ module ldc1101_spi (
             rp_data<=16'd0; l_data<=16'd0;
             rp_lo<=8'd0; rp_hi<=8'd0; l_lo<=8'd0; l_hi<=8'd0;
             st_byte<=8'd0; por_cnt<=4'd0; status<=8'd0;
+            rp_prev<=16'd0; rp_same<=7'd0;
         end else begin
             spi_start  <= 1'b0;
             data_valid <= 1'b0;
@@ -310,9 +354,11 @@ module ldc1101_spi (
                 delay_cnt <= 23'd0;
                 status    <= st_byte;   // latch unconditionally: a POR-retry loop is
                                         // exactly the case worth seeing from outside
-                if (st_byte[0]) begin           // POR_READ: device fell back to reset
+                if (st_byte[0] || rp_railed || rp_frozen) begin  // parked: POR, or
+                                                   // data registers frozen at 0xFFFF
                     if (por_cnt == POR_RETRY) begin
                         por_cnt   <= 4'd0;      // persistent -> reconfigure, emit nothing
+                        rp_same   <= 7'd0;
                         cfg_idx   <= 4'd0;
                         init_done <= 1'b0;
                         state     <= S_CFG;
@@ -322,6 +368,9 @@ module ldc1101_spi (
                     end
                 end else begin
                     por_cnt    <= 4'd0;
+                    rp_prev    <= {rp_hi, rp_lo};
+                    rp_same    <= ({rp_hi, rp_lo} == rp_prev) ? (rp_same + 7'd1)
+                                                              : 7'd0;
                     rp_data    <= {rp_hi, rp_lo};
                     l_data     <= {l_hi, l_lo};
                     data_valid <= 1'b1;

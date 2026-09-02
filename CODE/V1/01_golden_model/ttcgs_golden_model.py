@@ -13,7 +13,8 @@ This is the "correct answer" reference. It computes, in floating point:
 Later, the Verilog RTL output will be compared against THIS to confirm the
 hardware implementation is numerically correct (within fixed-point tolerance).
 
-Parameters match the paper:  sigma = 2 / 8 / 85,  256 taps, causal,
+Parameters match the paper:  sigma = 2.2 / 8.8 / 85, the fast pair
+delayed by a common 5.3 samples over 33 taps (see delayed_gaussian), causal,
 fs = 1000 SPS,  z-score N = 3, noise estimated over 512 stationary samples,
 rate-of-change uses k = 10 samples.
 """
@@ -25,7 +26,9 @@ import numpy as np
 # ----------------------------------------------------------------------------
 FS       = 1000.0          # sampling rate, samples/s
 N_TAPS   = 256             # causal kernel length
-SIGMAS   = [2.0, 8.0, 85.0]  # sigma1, sigma2, sigma3
+SIGMAS   = [2.2, 8.8, 85.0]  # sigma1, sigma2, sigma3
+DELAY    = 5.3             # common offset of the fast pair, samples
+KLEN     = 33              # active taps of the delayed kernels
 ZSCORE_N = 3.0             # significance threshold (std devs)
 NOISE_SAMPLES = 512        # samples used to estimate stationary noise sigma
 ROC_K    = 10              # rate-of-change lag (samples) for fast/slow flags
@@ -47,8 +50,43 @@ def causal_gaussian(sigma, n_taps):
     return g
 
 
+def delayed_gaussian(sigma, D, L, n_taps=N_TAPS):
+    """
+    Delayed causal Gaussian:
+        g[n] = exp(-(n-D)^2 / (2 sigma^2)),  n = 0..L-1,  normalized, then
+    zero-padded to n_taps so it drops into the fixed 256-tap MAC loop unchanged.
+
+    The point of D is that the kernel no longer starts at its peak. A one-sided
+    Gaussian has h[0] = max, i.e. a full-amplitude step at the origin, and that
+    step puts a 1/f tail on the transfer function which destroys the stopband
+    behaviour the Gaussian was chosen for. Both kernels of a DoG pair must carry
+    the SAME D: delaying each by its own 3*sigma leaves a residual step, because
+    the two offsets differ and the difference no longer cancels at n = 0.
+    """
+    n = np.arange(L)
+    g = np.exp(-((n - D) ** 2) / (2.0 * sigma ** 2))
+    g /= g.sum()
+    out = np.zeros(n_taps)
+    out[:L] = g
+    return out
+
+
 def make_kernels():
-    return [causal_gaussian(s, N_TAPS) for s in SIGMAS]
+    """
+    The shipped design: a delayed pair for the fast branch, sigma3 undelayed.
+
+    sigma2 is shared, so the slow branch becomes delayed-sigma2 minus
+    undelayed-sigma3. That is an improvement, not a regression: sigma3's own
+    group delay of 67 samples dwarfs the 5.3-sample offset.
+    """
+    return [delayed_gaussian(SIGMAS[0], DELAY, KLEN),
+            delayed_gaussian(SIGMAS[1], DELAY, KLEN),
+            causal_gaussian(SIGMAS[2], N_TAPS)]
+
+
+def make_kernels_onesided(sigmas=(2.0, 8.0, 85.0)):
+    """The pre-2026-08-20 one-sided design, kept so its figures reproduce."""
+    return [causal_gaussian(s, N_TAPS) for s in sigmas]
 
 
 # ----------------------------------------------------------------------------
