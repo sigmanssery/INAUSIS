@@ -188,7 +188,22 @@ module digipot_sweep #(
                                   : (REST_CODE - amp_of(a_i) + acc[18:8]);
                     end
                 end
-                P_END: begin next_code = REST_CODE; done <= 1'b1; end
+                // LOOPING (2026-09-13).  The sweep used to park here forever:
+                // N_AMP rungs x N_REP presentations is 12.75 minutes at
+                // N_REP=10, so every rung's floor rested on ten repeats and
+                // could not be placed any more tightly than ten repeats allow.
+                // Restarting at rung 0 costs no new state -- a_i, rep, t, acc
+                // and ph all already carry reset and in-flight assignments, so
+                // this adds mux inputs to existing registers and no register.
+                // `done` stays latched: it means "a full pass has completed",
+                // which is still true, rather than "stopped", which no longer
+                // is.  Rung N_AMP appears in aux for exactly one tick per pass,
+                // which is the cycle boundary an offline drift check needs.
+                P_END: begin
+                    next_code = REST_CODE; done <= 1'b1;
+                    a_i <= 5'd0; rep <= 8'd0; t <= 16'd0; acc <= 24'd0;
+                    ph  <= P_GAP;
+                end
                 default: ph <= P_GAP;
                 endcase
 

@@ -27,8 +27,10 @@ module dsp_chain #(
     // loss, RESET reloads from internal flash, and Gowin's "Verify Failed at 0"
     // is a false alarm that cannot be trusted either way -- and each of those has
     // cost real time here.  Hex is chosen to read at a glance: 0x0934 is the
-    // thirty-fourth build, September.  BUMP IT EVERY BUILD.
-    parameter [15:0] BUILD_ID = 16'h0945
+    // thirty-fourth build, September.  BUMP IT EVERY BUILD -- and note that for the
+    // ttcgs_board target this default is NOT the one that ships: ttcgs_sys overrides
+    // it, so bump ttcgs_sys.v too, or instead.  Kept equal to it on purpose.
+    parameter [15:0] BUILD_ID = 16'h0946
 )(
     input  wire                 clk,
     input  wire                 rst_n,

@@ -28,7 +28,12 @@ module ttcgs_sys #(
     parameter CH_BITS = 3,
     parameter N_DIM   = 18,
     parameter DIM_BITS= 5,
-    parameter [15:0] BUILD_ID = 16'h0945   // see dsp_chain
+    // THIS IS THE KNOB.  dsp_chain has a BUILD_ID parameter too, and its comment
+    // says to bump it every build -- but ttcgs_board instantiates ttcgs_sys with
+    // no override, and ttcgs_sys passes THIS value down, so dsp_chain's default is
+    // dead for the board target.  Editing dsp_chain alone silently builds the old
+    // id (2026-09-13).  Keep the two equal so neither can be read as authoritative.
+    parameter [15:0] BUILD_ID = 16'h0946   // see dsp_chain for what it is for
 )(
     input  wire                clk,
     input  wire                rst_n,
