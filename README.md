@@ -4,15 +4,25 @@ A biomimetic dual-modal tactile sensing front-end: a chain-aligned magnetorheolo
 elastomer (MRE) skin read through two orthogonal channels, and a causal
 Difference-of-Gaussians temporal encoder that runs on a single commodity FPGA.
 
-The work is split into two companion manuscripts, both **in preparation**:
+The front-end is named **Temporal Tactile Causal Gaussian Scale-space (TTCGS)**,
+*scale-space* in Lindeberg's sense. An earlier draft expanded the acronym as
+"Splash"; that name is withdrawn, and any document here still using it is stale.
 
-| Manuscript | Scope |
-|---|---|
-| **A Chain-Aligned Magnetorheological Elastomer for Range-Partitioned Dual-Modal Tactile Sensing** | the sensing material and the physics of its two readouts |
-| **Temporal Tactile Causal Gaussian Splash (TTCGS)** | the signal-processing front-end that consumes them |
+The work is split across several manuscripts, each making an independent claim and
+validated independently. None is evidence for another.
 
-They make independent claims and are validated independently. Neither is evidence
-for the other.
+| | Manuscript | Status |
+|---|---|---|
+| **P1** | A Causal Difference-of-Gaussians Temporal Front-End for Tactile Sensing: The Cost of Causalisation and a Delayed-Kernel Remedy | complete |
+| P2 | the adaptive threshold engine and its detection floors | in preparation |
+| P3 | measurement methodology for front-ends of this kind | in preparation |
+| P4 | the dual-modal coupling root cause (Letter) | in preparation |
+| — | A Chain-Aligned Magnetorheological Elastomer for Range-Partitioned Dual-Modal Tactile Sensing | material not yet characterised |
+
+P1 is the filter paper and the one the resource, timing and fixed-point numbers in
+this repository belong to. It was recorded through **BUILD_ID 0x0935**; frames
+carry that id in dim 4, and nothing else distinguishes one build's output from
+another's.
 
 ---
 
@@ -211,8 +221,8 @@ end, which is also the current bottleneck.
 
 ## Status of this repository
 
-This is a research repository accompanying two manuscripts in preparation. The RTL
-is complete and verified in simulation and on silicon; the sensing material is
+This is a research repository accompanying the manuscripts listed at the top. The
+RTL is complete and verified in simulation and on silicon; the sensing material is
 formulated but not yet characterized. Figures marked as placeholders in the
 manuscripts correspond directly to the measurements listed as open above.
 
