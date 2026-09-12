@@ -20,7 +20,15 @@ module dsp_chain #(
     parameter N_CH    = 6,
     parameter CH_BITS = 3,
     parameter N_DIM   = 18,
-    parameter DIM_BITS= 5
+    parameter DIM_BITS= 5,
+    // Build identifier, carried in the frame at BID_DIM so a capture always says
+    // which bitstream produced it.  This board has three ways to end up running
+    // something other than what was just built -- SRAM loses its image on power
+    // loss, RESET reloads from internal flash, and Gowin's "Verify Failed at 0"
+    // is a false alarm that cannot be trusted either way -- and each of those has
+    // cost real time here.  Hex is chosen to read at a glance: 0x0934 is the
+    // thirty-fourth build, September.  BUMP IT EVERY BUILD.
+    parameter [15:0] BUILD_ID = 16'h0945
 )(
     input  wire                 clk,
     input  wire                 rst_n,
@@ -56,6 +64,10 @@ module dsp_chain #(
     //=========================================================================
     wire [CH_BITS-1:0]   dog_ch_done;
     wire signed [15:0]   dog_G1, dog_G2, dog_G3, dog_fast, dog_slow;
+    // Flag-engine copies, scaled up per channel -- see dog_fir_multi's FB_CH*.
+    // dog_flat and slide_detect stay on the unscaled set above so the frame
+    // format and the slide thresholds are untouched.
+    wire signed [15:0]   dog_G3f, dog_fastf, dog_slowf;
     wire                 dog_result_valid, dog_busy;
 
     dog_fir_multi #(.N_CH(N_CH), .CH_BITS(CH_BITS)) u_dog (
@@ -64,6 +76,7 @@ module dsp_chain #(
         .ch_done(dog_ch_done),
         .G_s1(dog_G1), .G_s2(dog_G2), .G_s3(dog_G3),
         .DoG_fast(dog_fast), .DoG_slow(dog_slow),
+        .G_s3_f(dog_G3f), .DoG_fast_f(dog_fastf), .DoG_slow_f(dog_slowf),
         .result_valid(dog_result_valid), .busy(dog_busy)
     );
 
@@ -71,13 +84,32 @@ module dsp_chain #(
     // Feeder FSM: when DoG produces a channel result, push its 3 features
     // into the flag engine on 3 consecutive cycles.
     //=========================================================================
-    localparam F_IDLE=2'd0, F_FAST=2'd1, F_SLOW=2'd2, F_G3=2'd3;
-    reg [1:0]            fstate;
+    localparam F_IDLE=3'd0, F_FAST=3'd1, F_SLOW=3'd2, F_G3=3'd3, F_RAW=3'd4;
+    reg [2:0]            fstate;
+
+    // CONTACT dimension.  The three bands answer three different questions and
+    // none of them is "is the sensor loaded right now": d2 is a 371 ms moving
+    // average, so a 111 ms tap keeps it asserted for 481 ms, and d0/d1 are rate
+    // detectors that mark edges.  Measured 2026-09-05 against the raw signal:
+    // d0 overshoots the true contact duration by +56 ms, d1 by -99, d2 by +370.
+    //
+    // The raw signal itself has no such lag -- 6.5 ms to rise, 4.4 ms to fall --
+    // so running the SAME adaptive threshold on it gives contact directly.  It
+    // costs nothing: SINGLE_CH=1 leaves ch1-3's nine dimensions permanently
+    // dead, and dim 3 is one of them.
+    //
+    // Scaled by 16 to match dims 0-11, which is what VAR_CEIL_F and the fine
+    // path assume.  The resting level (about 1613 counts) is 25,808 there and
+    // still fits; a press saturates, which is harmless for an ABS comparison.
+    wire signed [15:0] raw_x16 = (raw_lat >  16'sd2047) ? 16'sh7FFF
+                               : (raw_lat < -16'sd2048) ? 16'sh8000
+                                                        : (raw_lat <<< 4);
     reg [CH_BITS-1:0]    feed_ch;
     reg signed [15:0]    lat_fast, lat_slow, lat_g3;
 
     reg [DIM_BITS-1:0]   flag_dim_id;
     reg signed [15:0]    flag_x;
+    reg signed [15:0]    lat_fastf, lat_slowf, lat_g3f;
     reg                  flag_valid_in;
     reg                  flag_mode_roc;
 
@@ -94,11 +126,14 @@ module dsp_chain #(
     // dim RAW_DIM still reports dead=1 while carrying live data.
     localparam RAW_DIM = 12;
     localparam AUX_DIM = 13;
+    // ch1's slow band; ch1 is never sampled under SINGLE_CH so this dimension
+    // carried a dead constant.  See BUILD_ID.
+    localparam BID_DIM = 4;
     // Bring-up scaffolding: dims 14-17 carry slide_detect's internals so a host
     // capture can be compared against the offline model sample by sample.  That
     // is how the signedness bug in the squarer was located -- reading the code
     // had failed four times.  Off for anything whose resource figures are quoted.
-    localparam DEBUG_TAPS = 1'b1;
+    localparam DEBUG_TAPS = 1'b0;
     reg signed [15:0]    raw_lat;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n)                          raw_lat <= 16'sd0;
@@ -124,6 +159,7 @@ module dsp_chain #(
             assign dog_flat[gi*16 +: 16] =
                 (gi == RAW_DIM) ? raw_lat :
                 (gi == AUX_DIM) ? aux_val :
+                (gi == BID_DIM) ? $signed(BUILD_ID) :
                 (DEBUG_TAPS && gi == 14) ? $signed(zdbg_wl) :
                 (DEBUG_TAPS && gi == 15) ? $signed(zdbg_al) :
                 (DEBUG_TAPS && gi == 16) ? $signed(zdbg_wd) :
@@ -137,6 +173,7 @@ module dsp_chain #(
             fstate        <= F_IDLE;
             feed_ch       <= 0;
             lat_fast<=0; lat_slow<=0; lat_g3<=0;
+            lat_fastf<=0; lat_slowf<=0; lat_g3f<=0;
             flag_dim_id   <= 0;
             flag_x        <= 0;
             flag_valid_in <= 1'b0;
@@ -153,22 +190,37 @@ module dsp_chain #(
                     lat_fast <= dog_fast;
                     lat_slow <= dog_slow;
                     lat_g3   <= dog_G3;
+                    lat_fastf<= dog_fastf;
+                    lat_slowf<= dog_slowf;
+                    lat_g3f  <= dog_G3f;
                     fstate   <= F_FAST;
                 end
             end
             // push DoG_fast -> dim = ch*3+0, ROC
             F_FAST: begin
-                flag_dim_id   <= feed_ch*3 + 0;
-                flag_x        <= lat_fast;
-                flag_mode_roc <= 1'b1;        // ROC
-                flag_valid_in <= 1'b1;
-                dog_store[feed_ch*3 + 0] <= lat_fast;
+                // ch1 is skipped: dim 3 belongs to the contact detector now (see
+                // F_RAW), and ch1's own fast band is dead anyway because
+                // SINGLE_CH=1 never samples that channel.  Feeding both would
+                // alternate two unrelated signals into one dimension and destroy
+                // its calibration.
+                //
+                // The fine copy is used again here.  The v25 revert existed
+                // because the fine values were saturated BEFORE the DoG
+                // subtraction, which zeroed d0/d1 during a press; dog_fir_multi
+                // now subtracts at full width and saturates once.
+                if (feed_ch != 3'd1) begin
+                    flag_dim_id   <= feed_ch*3 + 0;
+                    flag_x        <= lat_fastf;
+                    flag_mode_roc <= 1'b1;        // ROC
+                    flag_valid_in <= 1'b1;
+                    dog_store[feed_ch*3 + 0] <= lat_fast;
+                end
                 fstate        <= F_SLOW;
             end
             // push DoG_slow -> dim = ch*3+1, ROC
             F_SLOW: begin
                 flag_dim_id   <= feed_ch*3 + 1;
-                flag_x        <= lat_slow;
+                flag_x        <= lat_slowf;
                 flag_mode_roc <= 1'b1;        // ROC
                 flag_valid_in <= 1'b1;
                 dog_store[feed_ch*3 + 1] <= lat_slow;
@@ -177,10 +229,19 @@ module dsp_chain #(
             // push G_s3 -> dim = ch*3+2, ABS
             F_G3: begin
                 flag_dim_id   <= feed_ch*3 + 2;
-                flag_x        <= lat_g3;
+                flag_x        <= lat_g3f;
                 flag_mode_roc <= 1'b0;        // ABS
                 flag_valid_in <= 1'b1;
                 dog_store[feed_ch*3 + 2] <= lat_g3;
+                fstate        <= (feed_ch == 0) ? F_RAW : F_IDLE;
+            end
+            // Contact, from ch0's raw only.  See raw_x16 above.
+            F_RAW: begin
+                flag_dim_id   <= 5'd3;
+                flag_x        <= raw_x16;
+                flag_mode_roc <= 1'b0;        // ABS: level, not rate
+                flag_valid_in <= 1'b1;
+                dog_store[3]  <= raw_lat;     // frame shows what the mask judged
                 fstate        <= F_IDLE;
             end
             endcase

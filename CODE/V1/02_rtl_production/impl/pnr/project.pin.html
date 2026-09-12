@@ -78,7 +78,7 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">Created Time</td>
-<td>Sat Aug  8 17:49:19 2026
+<td>Wed Sep  9 22:45:49 2026
 </td>
 </tr>
 <tr>
@@ -223,7 +223,7 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 <td>1.8</td>
 </tr>
 <tr>
-<td class="label">led_acq</td>
+<td class="label">led_uncal</td>
 <td>-</td>
 <td>11/3</td>
 <td>Y</td>
@@ -259,6 +259,82 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 <td>OFF</td>
 <td>NA</td>
 <td>1.8</td>
+</tr>
+<tr>
+<td class="label">led_d2</td>
+<td>-</td>
+<td>14/3</td>
+<td>Y</td>
+<td>out</td>
+<td>IOL22[B]</td>
+<td>-</td>
+<td>LVCMOS18</td>
+<td>8</td>
+<td>UP</td>
+<td>NA</td>
+<td>NA</td>
+<td>OFF</td>
+<td>NA</td>
+<td>OFF</td>
+<td>NA</td>
+<td>1.8</td>
+</tr>
+<tr>
+<td class="label">led_d1</td>
+<td>-</td>
+<td>15/3</td>
+<td>Y</td>
+<td>out</td>
+<td>IOL25[B]</td>
+<td>-</td>
+<td>LVCMOS18</td>
+<td>8</td>
+<td>UP</td>
+<td>NA</td>
+<td>NA</td>
+<td>OFF</td>
+<td>NA</td>
+<td>OFF</td>
+<td>NA</td>
+<td>1.8</td>
+</tr>
+<tr>
+<td class="label">led_d0</td>
+<td>-</td>
+<td>16/3</td>
+<td>Y</td>
+<td>out</td>
+<td>IOL26[B]</td>
+<td>-</td>
+<td>LVCMOS18</td>
+<td>8</td>
+<td>UP</td>
+<td>NA</td>
+<td>NA</td>
+<td>OFF</td>
+<td>NA</td>
+<td>OFF</td>
+<td>NA</td>
+<td>1.8</td>
+</tr>
+<tr>
+<td class="label">servo_pwm</td>
+<td>-</td>
+<td>32/2</td>
+<td>Y</td>
+<td>out</td>
+<td>IOB15[B]</td>
+<td>-</td>
+<td>LVCMOS33</td>
+<td>8</td>
+<td>UP</td>
+<td>NA</td>
+<td>NA</td>
+<td>OFF</td>
+<td>NA</td>
+<td>NA</td>
+<td>NA</td>
+<td>3.3</td>
 </tr>
 <tr>
 <td class="label">ads_cs_n</td>
@@ -403,6 +479,25 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 <td>-</td>
 <td>LVCMOS33</td>
 <td>4</td>
+<td>UP</td>
+<td>NA</td>
+<td>NA</td>
+<td>OFF</td>
+<td>NA</td>
+<td>NA</td>
+<td>NA</td>
+<td>3.3</td>
+</tr>
+<tr>
+<td class="label">uart_tx</td>
+<td>-</td>
+<td>17/2</td>
+<td>Y</td>
+<td>out</td>
+<td>IOB2[A]</td>
+<td>-</td>
+<td>LVCMOS33</td>
+<td>8</td>
 <td>UP</td>
 <td>NA</td>
 <td>NA</td>
@@ -811,16 +906,16 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">17/2</td>
-<td>-</td>
-<td>in</td>
+<td>uart_tx</td>
+<td>out</td>
 <td>IOB2[A]</td>
 <td>-</td>
 <td>LVCMOS33</td>
-<td>NA</td>
+<td>8</td>
 <td>UP</td>
-<td>ON</td>
-<td>NONE</td>
 <td>NA</td>
+<td>NA</td>
+<td>OFF</td>
 <td>NA</td>
 <td>NA</td>
 <td>NA</td>
@@ -998,16 +1093,16 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">32/2</td>
-<td>-</td>
-<td>in</td>
+<td>servo_pwm</td>
+<td>out</td>
 <td>IOB15[B]</td>
 <td>-</td>
 <td>LVCMOS33</td>
-<td>NA</td>
+<td>8</td>
 <td>UP</td>
-<td>ON</td>
-<td>NONE</td>
 <td>NA</td>
+<td>NA</td>
+<td>OFF</td>
 <td>NA</td>
 <td>NA</td>
 <td>NA</td>
@@ -1508,7 +1603,7 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">11/3</td>
-<td>led_acq</td>
+<td>led_uncal</td>
 <td>out</td>
 <td>IOL16[B]</td>
 <td>-</td>
@@ -1678,18 +1773,18 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">14/3</td>
-<td>-</td>
-<td>in</td>
+<td>led_d2</td>
+<td>out</td>
 <td>IOL22[B]</td>
 <td>-</td>
 <td>LVCMOS18</td>
-<td>NA</td>
+<td>8</td>
 <td>UP</td>
-<td>ON</td>
-<td>NONE</td>
 <td>NA</td>
 <td>NA</td>
+<td>OFF</td>
 <td>NA</td>
+<td>OFF</td>
 <td>NA</td>
 <td>1.8</td>
 </tr>
@@ -1763,18 +1858,18 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">15/3</td>
-<td>-</td>
-<td>in</td>
+<td>led_d1</td>
+<td>out</td>
 <td>IOL25[B]</td>
 <td>-</td>
 <td>LVCMOS18</td>
-<td>NA</td>
+<td>8</td>
 <td>UP</td>
-<td>ON</td>
-<td>NONE</td>
 <td>NA</td>
 <td>NA</td>
+<td>OFF</td>
 <td>NA</td>
+<td>OFF</td>
 <td>NA</td>
 <td>1.8</td>
 </tr>
@@ -1797,18 +1892,18 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">16/3</td>
-<td>-</td>
-<td>in</td>
+<td>led_d0</td>
+<td>out</td>
 <td>IOL26[B]</td>
 <td>-</td>
 <td>LVCMOS18</td>
-<td>NA</td>
+<td>8</td>
 <td>UP</td>
-<td>ON</td>
-<td>NONE</td>
 <td>NA</td>
 <td>NA</td>
+<td>OFF</td>
 <td>NA</td>
+<td>OFF</td>
 <td>NA</td>
 <td>1.8</td>
 </tr>

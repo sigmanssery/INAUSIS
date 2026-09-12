@@ -41,7 +41,48 @@ module dog_fir_multi #(
     parameter CH_BITS  = 3,     // ceil(log2(N_CH))
     parameter N_TAPS   = 256,
     parameter ADDR_BITS= 8,
-    parameter FRAC     = 15
+    parameter FRAC     = 15,
+    // Extra fractional bits kept on the FLAG-ENGINE copy of the outputs, per
+    // channel.  The frame copy is unaffected: see the two output sets below.
+    //
+    // A 256-tap Gaussian at sigma=85 averages the input noise down by ~sqrt(85),
+    // so on a quiet channel the result is a fraction of one count -- and
+    // `acc >>> FRAC` then rounds the whole thing to zero.  Measured 2026-09-04 on
+    // the real FSR (raw sd 5.00, 10 s with nothing touching it), recomputing the
+    // same kernels in floating point:
+    //
+    //     dim  mode  true sigma  after integer truncation  threshold now / ideal
+    //     d0   ROC     2.1721            2.2163              11.08 / 10.86  1.0x
+    //     d1   ROC     0.2039            0.1801               5.00 /  1.02  4.9x
+    //     d2   ABS     0.0726            0.0000               5.00 /  0.36 13.8x
+    //
+    // d0 loses nothing: its output is already well above one count.  d1 and d2
+    // are both pinned to the THR_MIN floor because their variance estimate
+    // rounds to zero, and d2 is additionally reported dead.  The information is
+    // in the accumulator; only the output word is too coarse to carry it.
+    //
+    // The shift is PER CHANNEL because the two sensors differ by ~600x at rest
+    // (piezoresistive sigma 0.5-0.8 counts, inductive 212-501), so one scaling
+    // cannot serve both: 4 extra bits on the inductive channels would clip them
+    // continuously.  ch0-3 are the piezoresistive corners, ch4-5 the inductive
+    // pair.  A better long-term answer is to normalise per calibration epoch
+    // (block floating point) so nothing is hand-set, but the exponent must then
+    // be frozen for the epoch -- a scale change mid-epoch corrupts the ROC
+    // difference x[n]-x[n-ROC_K] and silently invalidates the stored threshold.
+    // 2^4, not 2^6.  The finer scale bought nothing: d1's true sigma is 0.11
+    // counts, so its 5-sigma threshold is 0.53, already above the 0.31 floor
+    // that 2^4 implies -- both scales leave it adaptive.  What 2^6 did cost is
+    // headroom: d1 peaks near 22,000 counts on a press and saturates at 512
+    // instead of 2048, so through the middle of a transient BOTH ROC operands
+    // pin at 32767 and x[n]-x[n-10] reads zero.  Measured 2026-09-05: the mask
+    // appeared only while the signal crossed the saturation band, and the
+    // shorter assertion looked like an improvement when it was lost data.
+    parameter [2:0] FB_CH0 = 3'd4,
+    // Extra right-shift applied to G_s3's fine copy only; see the DONE state.
+    // Zero now that FB_CH0 is 4: G_s3's resting DC (about 1613 counts) needs the
+    // scale kept at or below 2^4, which the common scale already satisfies.
+    parameter [2:0] G3_TRIM = 3'd0,
+    parameter [2:0] FB_CH4 = 3'd0
 )(
     input  wire                 clk,
     input  wire                 rst_n,
@@ -56,6 +97,15 @@ module dog_fir_multi #(
     output reg  signed [15:0]   G_s3,
     output reg  signed [15:0]   DoG_fast,
     output reg  signed [15:0]   DoG_slow,
+    // Same three features the flag engine consumes, but scaled up by FB_CH*
+    // bits so a sub-count result survives.  They saturate far earlier (2047
+    // counts at 4 bits) and that is deliberate: the thresholds they are compared
+    // against are 0.36-11 counts, so saturation sits 160-5500x above any
+    // decision.  Everything that reports a MAGNITUDE -- the UART frame and
+    // slide_detect -- stays on the unscaled outputs above.
+    output reg  signed [15:0]   G_s3_f,
+    output reg  signed [15:0]   DoG_fast_f,
+    output reg  signed [15:0]   DoG_slow_f,
     output reg                  result_valid,
 
     output reg                  busy           // high while MAC engine running
@@ -110,6 +160,14 @@ module dog_fir_multi #(
 
     reg signed [38:0]    acc;
     reg signed [15:0]    g_result [0:2];
+    // The fine copies are kept UNSATURATED and full width.  Saturating each
+    // Gaussian before the DoG subtraction is what broke v24: during a press both
+    // operands pinned at 32767 and G1-G2 collapsed to zero, taking d0's latency
+    // from 2.90 ms to 108.79 ms.  Subtracting first and saturating once keeps
+    // the transient, because the DIFFERENCE is what has to survive, not the
+    // terms.  30 bits covers the widest case (shift of 9 on a 39-bit acc).
+    reg signed [29:0]    g_wide   [0:2];
+    wire [2:0] fbits = (cur_ch <= 3) ? FB_CH0 : FB_CH4;
 
     // address helpers. tap is clamped to N_TAPS-1 for the single drain cycle
     // (tap==N_TAPS) so neither RAM is ever addressed out of range; that cycle's
@@ -141,6 +199,8 @@ module dog_fir_multi #(
             busy         <= 1'b0;
             ch_done      <= 0;
             G_s1<=0; G_s2<=0; G_s3<=0; DoG_fast<=0; DoG_slow<=0;
+            G_s3_f<=0; DoG_fast_f<=0; DoG_slow_f<=0;
+            for (i=0;i<3;i=i+1) g_wide[i] <= 30'sd0;
             for (i=0;i<N_CH;i=i+1) head[i] <= 0;
             // NOTE: sbuf is intentionally NOT reset here (see its declaration);
             // resetting it would prevent BSRAM inference.
@@ -178,6 +238,7 @@ module dog_fir_multi #(
             // SDONE: acc now holds the full 256-tap sum for this scale.
             SDONE: begin
                 g_result[scale] <= sat16(acc >>> FRAC);
+                g_wide[scale]   <= acc >>> (FRAC - fbits);
                 acc <= 39'sd0;
                 tap <= 0;
                 if (scale == 2'd2) state <= DONE;
@@ -195,6 +256,25 @@ module dog_fir_multi #(
                                 - $signed({{23{g_result[1][15]}}, g_result[1]}));
                 DoG_slow <= sat16($signed({{23{g_result[1][15]}}, g_result[1]})
                                 - $signed({{23{g_result[2][15]}}, g_result[2]}));
+                // Subtract at full width, saturate once.  See g_wide above.
+                //
+                // G_s3 is the only band that carries DC -- it IS the baseline,
+                // about 1613 counts on this sensor -- so its scale is bounded by
+                // the resting level, not by the transient.  At the g_wide scale
+                // of 2^6 that is 103,232 and sat16 pins it at 32767 both at rest
+                // and under a press, leaving x - mu identically zero: measured
+                // 2026-09-05, d2 fired on 0 of 71 presses while d0/d1 were
+                // untouched at 71/71.  Shifting it back down by G3_TRIM gives
+                // 2^4, where 1613*16 = 25,808 still fits.  The difference bands
+                // are band-pass and carry no DC, so they keep the full scale.
+                //
+                // The subtractions below must use ONE scale, so the trim is
+                // applied only to this output, not to g_wide itself.
+                G_s3_f     <= sat16({{9{g_wide[2][29]}}, g_wide[2]} >>> G3_TRIM);
+                DoG_fast_f <= sat16($signed({{9{g_wide[0][29]}}, g_wide[0]})
+                                  - $signed({{9{g_wide[1][29]}}, g_wide[1]}));
+                DoG_slow_f <= sat16($signed({{9{g_wide[1][29]}}, g_wide[1]})
+                                  - $signed({{9{g_wide[2][29]}}, g_wide[2]}));
                 ch_done  <= cur_ch;
                 result_valid <= 1'b1;
                 state    <= IDLE;

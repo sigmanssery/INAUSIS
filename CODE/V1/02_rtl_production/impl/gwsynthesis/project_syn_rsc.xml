@@ -1,22 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Module name="ttcgs_board" Register="198" Alu="31" Lut="166" T_Register="2124(198)" T_Alu="295(31)" T_Lut="2373(166)" T_MULT36X36="1(0)" T_MULTADDALU18X18="1(0)" T_ALU54D="1(0)" T_Bsram="5(0)" T_Ssram="118(0)">
- <SubModule name="u_ldc" Register="161" Lut="176" T_Register="161(161)" T_Lut="176(176)"/>
- <SubModule name="u_ads" Register="124" Lut="142" T_Register="124(124)" T_Lut="142(142)"/>
- <SubModule name="u_sys" Register="2" Lut="5" T_Register="1641(2)" T_Alu="264(0)" T_Lut="1889(5)" T_MULT36X36="1(0)" T_MULTADDALU18X18="1(0)" T_ALU54D="1(0)" T_Bsram="5(0)" T_Ssram="118(0)">
-  <SubModule name="u_chain" Register="367" Lut="67" T_Register="1327(367)" T_Alu="229(0)" T_Lut="1091(67)" T_MULT36X36="1(0)" T_MULTADDALU18X18="1(0)" T_ALU54D="1(0)" T_Bsram="3(0)" T_Ssram="110(0)">
-   <SubModule name="u_dog" Register="181" Alu="40" Lut="161" MULTADDALU18X18="1" Bsram="3" T_Register="181(181)" T_Alu="40(40)" T_Lut="161(161)" T_MULTADDALU18X18="1(1)" T_Bsram="3(3)"/>
-   <SubModule name="u_flag" Register="779" Alu="189" Lut="863" MULT36X36="1" ALU54D="1" Ssram="110" T_Register="779(779)" T_Alu="189(189)" T_Lut="863(863)" T_MULT36X36="1(1)" T_ALU54D="1(1)" T_Ssram="110(110)"/>
+<Module name="ttcgs_board" Register="304" Alu="50" Lut="441" T_Register="3730(304)" T_Alu="849(50)" T_Lut="4852(441)" T_MULT18X18="2(0)" T_MULT36X36="1(0)" T_MULTADDALU18X18="1(0)" T_ALU54D="1(0)" T_Bsram="6(0)" T_Ssram="162(0)">
+ <SubModule name="u_ldc" Register="176" Alu="16" Lut="197" T_Register="176(176)" T_Alu="16(16)" T_Lut="197(197)"/>
+ <SubModule name="u_ads" Register="218" Lut="507" T_Register="218(218)" T_Lut="507(507)"/>
+ <SubModule name="u_sys" Register="2" Lut="4" T_Register="2974(2)" T_Alu="783(0)" T_Lut="3612(4)" T_MULT18X18="2(0)" T_MULT36X36="1(0)" T_MULTADDALU18X18="1(0)" T_ALU54D="1(0)" T_Bsram="5(0)" T_Ssram="162(0)">
+  <SubModule name="u_chain" Register="384" Lut="140" T_Register="2643(384)" T_Alu="747(0)" T_Lut="2807(140)" T_MULT18X18="2(0)" T_MULT36X36="1(0)" T_MULTADDALU18X18="1(0)" T_ALU54D="1(0)" T_Bsram="3(0)" T_Ssram="154(0)">
+   <SubModule name="u_dog" Register="341" Alu="100" Lut="316" MULTADDALU18X18="1" Bsram="3" T_Register="341(341)" T_Alu="100(100)" T_Lut="316(316)" T_MULTADDALU18X18="1(1)" T_Bsram="3(3)"/>
+   <SubModule name="u_slide" Register="227" Alu="190" Lut="255" MULT18X18="2" T_Register="227(227)" T_Alu="190(190)" T_Lut="255(255)" T_MULT18X18="2(2)"/>
+   <SubModule name="u_flag" Register="1691" Alu="457" Lut="2096" MULT36X36="1" ALU54D="1" Ssram="154" T_Register="1691(1691)" T_Alu="457(457)" T_Lut="2096(2096)" T_MULT36X36="1(1)" T_ALU54D="1(1)" T_Ssram="154(154)"/>
   </SubModule>
-  <SubModule name="u_pk" Register="52" Lut="436" T_Register="68(52)" T_Lut="458(436)">
+  <SubModule name="u_pk" Register="53" Lut="394" T_Register="69(53)" T_Lut="416(394)">
    <SubModule name="u_crc" Register="16" Lut="22" T_Register="16(16)" T_Lut="22(22)"/>
   </SubModule>
-  <SubModule name="u_hd" Register="60" Alu="30" Lut="59" T_Register="181(60)" T_Alu="30(30)" T_Lut="268(59)" T_Ssram="8(0)">
-   <SubModule name="u_tx" Register="30" Lut="68" Ssram="8" T_Register="62(30)" T_Lut="123(68)" T_Ssram="8(8)">
+  <SubModule name="u_hd" Register="76" Alu="31" Lut="97" T_Register="197(76)" T_Alu="31(31)" T_Lut="303(97)" T_Ssram="8(0)">
+   <SubModule name="u_tx" Register="30" Lut="69" Ssram="8" T_Register="62(30)" T_Lut="124(69)" T_Ssram="8(8)">
     <SubModule name="u_enc" Register="32" Lut="55" T_Register="32(32)" T_Lut="55(55)"/>
    </SubModule>
-   <SubModule name="u_rx" Register="43" Lut="64" T_Register="43(43)" T_Lut="64(64)"/>
+   <SubModule name="u_rx" Register="43" Lut="60" T_Register="43(43)" T_Lut="60(60)"/>
    <SubModule name="u_rcrc" Register="16" Lut="22" T_Register="16(16)" T_Lut="22(22)"/>
   </SubModule>
-  <SubModule name="u_lp" Register="63" Alu="5" Lut="67" Bsram="2" T_Register="63(63)" T_Alu="5(5)" T_Lut="67(67)" T_Bsram="2(2)"/>
+  <SubModule name="u_lp" Register="63" Alu="5" Lut="82" Bsram="2" T_Register="63(63)" T_Alu="5(5)" T_Lut="82(82)" T_Bsram="2(2)"/>
  </SubModule>
+ <SubModule name="g_mir.u_mir" Register="58" Lut="95" Bsram="1" T_Register="58(58)" T_Lut="95(95)" T_Bsram="1(1)"/>
 </Module>

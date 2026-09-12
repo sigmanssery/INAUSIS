@@ -44,7 +44,7 @@ module ttcgs_pnr (
     ttcgs_sys u_sys (
         .clk(clk), .rst_n(rst_n),
         .ch_id(ch), .sample_in(samp), .sample_valid(sv),
-        .period_end(pe), .timestamp(ts),
+        .period_end(pe), .timestamp(ts), .health(4'b0),
         .line(line),
         .mask(mask_w), .mask_failsafe(mfs_w), .dead(dead_w),
         .dir_state(dir_o)

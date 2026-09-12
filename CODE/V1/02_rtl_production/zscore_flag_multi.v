@@ -51,17 +51,87 @@ module zscore_flag_multi #(
     // "dead" means the channel is frozen, i.e. EXACTLY zero variance.  A constant
     // sequence gives N*sumsq - sum^2 == 0 exactly in integer arithmetic, and the
     // frozen dims measure exactly 0.0000 on hardware, while the quietest live dim
-    // (ch0's G_s3, low-passed to 1.8 Hz) sits at 3.3-4.2.  VAR_FLOOR was 1, which
-    // marked anything with variance <= 1 dead and left only a 2x margin in sigma^2;
-    // 0 doubles that.
-    // NOTE this is a mitigation, not a cure: cal_var = floor(sigma^2) because of
-    // the >>2*CAL_SH truncation, so any genuinely live dim quieter than 1 count^2
-    // is still indistinguishable from frozen.  Detecting deadness from whether the
-    // raw input ever changes -- rather than from the filtered variance -- would be
-    // the principled fix.  Seen on synthetic white-noise stimulus, where G_s3's
-    // variance falls to 0.1 and the dim is wrongly marked dead; real sensor noise
-    // carries enough 1/f and mains to stay above it.
+    // (ch0's G_s3, low-passed to 1.8 Hz) sits at 3.3-4.2.  VAR_FLOOR was once 1 and
+    // is now 0; read that history against the scale in force at the time, which the
+    // next paragraph sets out -- the comparison is against cal_var16, not cal_var.
+    // The deadness test runs on cal_var16 = floor(16*sigma^2), NOT on the integer
+    // cal_var, so a dim is called frozen only below sigma^2 = 1/16.  That is a 16x
+    // improvement introduced with the fractional variance in v5 (2026-08-29); the
+    // paragraph that used to stand here described the pre-v5 behaviour, where the
+    // test ran on floor(sigma^2) and anything quieter than 1 count^2 was
+    // indistinguishable from frozen.  The synthetic white-noise case cited there --
+    // G_s3's variance falling to 0.1 and the dim wrongly marked dead -- no longer
+    // applies: 16*0.1 floors to 1, which is above VAR_FLOOR.
+    //
+    // VERIFIED 2026-09-03: L measured sd 13.0 counts over 42 distinct values with the
+    // inductive board attached, and is NOT marked dead -- the fractional variance does
+    // rescue it.  The paragraph below still holds for anything quieter.
+    //
+    // STILL A MITIGATION, NOT A CURE.  The floor has moved, not gone: a live dim
+    // below sigma^2 = 1/16 is still indistinguishable from frozen.  Detecting
+    // deadness from whether the raw input ever changes -- rather than from the
+    // filtered variance -- remains the principled fix.
+    //
+    // WHERE THIS MATTERED: the inductive L channel was reported quantisation-limited
+    // (variance rounding to integer zero, no z-score formable) on a build predating
+    // v5.  That report is now historical -- see the verification note above.  It is
+    // recorded here because it is the only case so far where this floor decided
+    // whether a real channel was usable, and the next such case will look the same:
+    // a dimension reported dead while its raw input is visibly moving.
     parameter VAR_FLOOR = 0,
+    // VAR_MIN16 is the smallest variance the threshold may be built from, in
+    // cal_var16 units (16*sigma^2).  16 is a sigma floor of one LSB, giving
+    // THR_MIN = N_SQ*1 = 25 counts^2, i.e. the threshold can never fall below 5
+    // counts however quiet the estimate goes.
+    //
+    // It is applied to the THRESHOLD, not to either variance, because the two
+    // estimators do not share units: the one-shot path carries 16*sigma^2 and
+    // the rolling path carries sigma^2 directly (new_var = w_sum_n >> CAL_SH).
+    // Flooring one variance leaves the other free to overwrite the threshold on
+    // the next accepted window -- measured: flooring only the one-shot path left
+    // the false-trigger rate unchanged at 34%, because the rolling path rewrites
+    // threshold[] every CAL_N samples.
+    //
+    // Needed because the front end became quantisation-limited on 2026-09-04,
+    // when powering down an always-on internal reference in the ADS cut its
+    // noise 13x: d0/d1 then took only five distinct values (-2..+2) and the
+    // per-window variance ranged 0.16-0.72.  A window landing on the quiet end
+    // gives cal_var16 = 2 and a threshold of 3.125, which the channel's own
+    // +-2 quantisation steps clear -- measured 9514 false triggers in 19180
+    // frames, against 0 before the noise dropped.  The failure is not that the
+    // channel got worse; it is that 5 sigma of a sub-LSB sigma is smaller than
+    // one LSB, so the threshold stops meaning anything.
+    //
+    // The floor is on the THRESHOLD path only.  cal_dead still tests the raw
+    // cal_var16, so a genuinely dead channel is still marked dead rather than
+    // being given a floored variance and treated as live.
+    //
+    // Chosen as one LSB because the quantisation-only sigma measured on this
+    // data is 0.4-0.85 LSB, so a 5-count threshold keeps ~5.9 sigma of margin
+    // against quantisation alone while costing far less sensitivity than the
+    // noise reduction bought: the effective threshold on dim0 goes from 39.8
+    // counts (noisy reference, cal_var 63.4) to 5.0, an 8x improvement.
+    //
+    // A per-band epsilon on sigma was validated in 2026-07 for the same class of
+    // fault and is NOT what is used here: that analysis assumed the comparison
+    // was |f| > N*sigma, where epsilon is one adder.  This engine compares in
+    // the SQUARED domain (f^2 > N_SQ*sigma^2), where (sigma+eps)^2 needs a
+    // square root and a variance floor is a compare and a mux.  The validated
+    // value of 0.3 also does not transfer: it was fitted to an LDC channel whose
+    // sigma collapsed to 0.01-0.05, one to two orders below this one.
+    // VAR_CEIL applies to dims 12-17 (the inductive channels, unscaled).  Dims
+    // 0-11 carry FB_CH0 extra fractional bits from dog_fir_multi, so their
+    // variance arrives 2^(2*FB_CH0) = 256x larger and the same numeric ceiling
+    // would reject any window whose sigma exceeded 8.8 counts instead of 141 --
+    // tight enough to risk the endless-retry failure the inductive dims showed
+    // on 2026-09-04, where every window was rejected and the dim never
+    // calibrated.  VAR_CEIL_F carries the same REAL-WORLD ceiling at the finer
+    // scale.  THR_MIN needs no such split: at the fine scale it floors sigma at
+    // 1/16 count (threshold 0.31) and at the coarse scale at 1 count
+    // (threshold 5.0), and both sit just below the measured sigma of the dims
+    // they guard.
+    parameter signed [39:0] VAR_CEIL_F = 40'sd5120000,   // 20000 * 16^2
+    parameter VAR_MIN16 = 16,
     // Upper bound on a plausible quiescent variance.  Calibration runs ONCE over
     // the first CAL_N samples and never repeats, so anything touching the sensor
     // during that window sets thresholds that nothing can afterwards exceed --
@@ -255,7 +325,23 @@ module zscore_flag_multi #(
     wire signed [39:0] cal_var16 = cal_num >>> (2*CAL_SH - 4);
     wire signed [39:0] cal_var   = cal_var16 >>> 4;
     wire               cal_dead = (cal_var16 <= $signed(VAR_FLOOR));
-    wire               cal_hot  = (cal_var   >  $signed(VAR_CEIL));
+    localparam signed [39:0] VAR_CEIL_C = VAR_CEIL;
+    // Only the G_s3 dims of the piezoresistive channels (ch*3+2 for ch0-3) carry
+    // the finer scale, so only they need the matching ceiling.  The DoG
+    // difference dims were reverted to the original scale -- see dsp_chain's
+    // F_FAST comment.
+    // All three bands of the piezoresistive channels now carry the finer scale
+    // (dims 0-11); dims 12-17 are the inductive pair and stay unscaled.
+    // Two fine scales now: the difference bands run at 2^6 and G_s3 at 2^4,
+    // because only G_s3 carries DC (see dog_fir_multi's G3_TRIM).  Variance
+    // scales with the square of the scale, so the ceiling has to follow.
+    wire s2_g3   = (s2_dim == 5'd2) || (s2_dim == 5'd5)
+                || (s2_dim == 5'd8) || (s2_dim == 5'd11);
+    wire s2_fine = (s2_dim < 5'd12) && !s2_g3;
+    // One fine scale again (2^4) now that FB_CH0 is 4 and G3_TRIM is 0, so the
+    // G_s3 split is gone; dims 0-11 share VAR_CEIL_F, 12-17 stay unscaled.
+    wire signed [39:0] ceil_eff = (s2_fine || s2_g3) ? VAR_CEIL_F : VAR_CEIL_C;
+    wire               cal_hot  = (cal_var   >  ceil_eff);
 
     // Strength-reduced constant multiply.  N_SQ is a compile-time constant, so
     // N_SQ * cal_var16 is a sum of shifts and needs no multiplier at all -- but
@@ -278,8 +364,27 @@ module zscore_flag_multi #(
             if (N_SQ_V[nb]) thr_mul = thr_mul + (cal_var16 <<< nb);
     end
 
-    wire signed [39:0] cal_thr  = cal_dead ? $signed(40'd0)
-                                           : (thr_mul >>> 4);
+    // A dead dim used to be given a threshold of ZERO.  That reads as "harmless"
+    // and is the opposite: zero means the test is cmp_val^2 > 0, so the dim fires
+    // on ANY departure from its mean at all.  It looked safe only because a dead
+    // dim is usually constant, which makes cmp_val exactly 0 and the comparison
+    // false -- the moment the channel moves by one count it asserts with no
+    // threshold behind it.
+    //
+    // Measured 2026-09-04 on the real sensor: at true rest the sustained band
+    // (dim2, G_s3, ~909 ms of smoothing on a raw sd of 1.97 counts) collapses to
+    // a SINGLE value, so cal_var16 = 0 and it is marked dead.  It then "detected"
+    // 10 of 10 presses with a 4.34 ms median -- but that was not a 5 sigma
+    // decision, it was "something changed", debounced three samples.  A dim that
+    // is quiet because it is heavily low-passed is indistinguishable here from
+    // one that is quiet because nothing is connected, and neither should be given
+    // a hair trigger.
+    //
+    // The floor now applies to every dim.  It costs nothing: re-running the same
+    // ten presses offline against |f| > 5 still detects 10 of 10 with the median
+    // latency unchanged at 4.34 ms (three presses shifted by one or two frames),
+    // and rest stays at 0 of 8118 frames.  dead[] keeps its reporting role.
+    wire signed [39:0] cal_thr  = (thr_mul >>> 4);
     wire signed [25:0] cal_mean = $signed(s2_sum) >>> CAL_SH;
 
     //=========================================================================
@@ -382,11 +487,20 @@ module zscore_flag_multi #(
             if (N_SQ_V[wb]) thr_win = thr_win + ((racc_n >> AVG_K) << wb);
     end
 
+    // THR_MIN: the floor both estimators land on.  VAR_MIN16 is in 16*sigma^2,
+    // N_SQ multiplies a variance, so N_SQ*VAR_MIN16/16 is the threshold in the
+    // counts^2 the comparison uses.  The SoC LUT write is deliberately NOT
+    // floored: an explicit threshold from software means what it says.
+    localparam signed [39:0] THR_MIN = (N_SQ * VAR_MIN16) >>> 4;
+    wire signed [39:0] cal_thr_f = (cal_thr < THR_MIN) ? THR_MIN : cal_thr;
+    wire signed [39:0] win_thr_f = ($signed(thr_win[39:0]) < THR_MIN)
+                                   ? THR_MIN : $signed(thr_win[39:0]);
+
     // threshold RAM: SoC LUT write > one-shot finalize > accepted window
     always @(posedge clk) begin
         if (lut_wr)                           threshold[lut_dim] <= {8'd0, lut_thr};
-        else if (s2_final && !cal_hot)        threshold[s2_dim]  <= cal_thr;
-        else if (s2_roll && w_full && acc_ok) threshold[s2_dim]  <= $signed(thr_win[39:0]);
+        else if (s2_final && !cal_hot)        threshold[s2_dim]  <= cal_thr_f;
+        else if (s2_roll && w_full && acc_ok) threshold[s2_dim]  <= win_thr_f;
     end
 
     // window sum / accepted reference

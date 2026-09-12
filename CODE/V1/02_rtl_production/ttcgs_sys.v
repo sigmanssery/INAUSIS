@@ -27,7 +27,8 @@ module ttcgs_sys #(
     parameter N_CH    = 6,
     parameter CH_BITS = 3,
     parameter N_DIM   = 18,
-    parameter DIM_BITS= 5
+    parameter DIM_BITS= 5,
+    parameter [15:0] BUILD_ID = 16'h0945   // see dsp_chain
 )(
     input  wire                clk,
     input  wire                rst_n,
@@ -38,6 +39,11 @@ module ttcgs_sys #(
     input  wire signed [15:0]  aux_val,      // -> dsp_chain dim AUX_DIM
     input  wire                period_end,    // pulse after last channel of a period
     input  wire [31:0]         timestamp,
+    // Front-end liveness from the board level, packed into status[7:4]. Assembled
+    // there because that is where the converter drivers live; carried in-band
+    // because a frame from a dead converter is otherwise indistinguishable from a
+    // live one. Tie to 4'b0 if a top level has nothing to report.
+    input  wire [3:0]          health,
 
     // single-wire half-duplex link to the SoC (tri-stated, board pull resistor)
     inout  wire                line,
@@ -47,6 +53,11 @@ module ttcgs_sys #(
     output wire [N_DIM-1:0]    mask_failsafe, // active-low  (0 = event); GPIO needs pull-down
     output wire [N_DIM-1:0]    dead,          // 1 = dim's calibration found var=0
     output wire [1:0]          dir_state,     // 0=TX,1=TURN1,2=RX,3=TURN2
+    // Same bit the frame carries in status[3], brought out so the board can put
+    // it on a lamp.  Until it clears, the thresholds are not yet trustworthy and
+    // the mask flickers -- without an indicator that period is indistinguishable
+    // from a fault, which cost real bench time on 2026-09-05.
+    output wire                uncal_any,
 
     // bring-up observation tap: the packed frame bytes, before Manchester.
     // Purely an output; nothing here feeds back into the datapath.
@@ -73,7 +84,8 @@ module ttcgs_sys #(
 
     wire slide_f, slide_v, contact_f;
     wire [N_DIM-1:0] uncal_w;
-    dsp_chain #(.N_CH(N_CH), .CH_BITS(CH_BITS), .N_DIM(N_DIM), .DIM_BITS(DIM_BITS)) u_chain (
+    dsp_chain #(.N_CH(N_CH), .CH_BITS(CH_BITS), .N_DIM(N_DIM), .DIM_BITS(DIM_BITS),
+                .BUILD_ID(BUILD_ID)) u_chain (
         .clk(clk), .rst_n(rst_n),
         .ch_id(ch_id), .sample_in(sample_in), .sample_valid(sample_valid),
         .aux_val(aux_val),
@@ -84,6 +96,7 @@ module ttcgs_sys #(
         .uncal(uncal_w),
         .chain_busy(chain_busy)
     );
+    assign uncal_any     = |uncal_w;
     assign mask          = chain_mask;
     assign mask_failsafe = chain_mask_fs;
     assign dead          = chain_dead;
@@ -112,7 +125,7 @@ module ttcgs_sys #(
     frame_packer u_pk (
         .clk(clk), .rst_n(rst_n), .pack_start(pack_start),
         .dog_flat(chain_dog_flat), .mask(chain_mask), .dead(chain_dead),
-        .timestamp(timestamp), .status({4'b0, |uncal_w, contact_f, slide_f, 1'b1}),
+        .timestamp(timestamp), .status({health, |uncal_w, contact_f, slide_f, 1'b1}),
         .wr_en(pk_wr_en), .wr_addr(pk_wr_addr), .wr_data(pk_wr_data),
         .payload_len(pk_len), .frame_start_out(pk_fstart), .done(pk_done)
     );

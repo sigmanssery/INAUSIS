@@ -10,11 +10,20 @@ IO_PORT "clk27" IO_TYPE=LVCMOS33;
 IO_PORT "rst_n" IO_TYPE=LVCMOS18 PULL_MODE=UP;
 
 // ─── Status LEDs (active-low, Bank3 1.8V) ───────────────────────────────────
+// Physical order left-to-right on the board: 16 15 14 13 11 10 (measured
+// 2026-09-05 with led_id.v; the six had never been mapped before).
+//   16 d0 fast | 15 d1 slow | 14 d2 sustained | 13 err | 11 uncal | 10 init
 IO_LOC "led_init" 10;
-IO_LOC "led_acq"  11;
+IO_LOC "led_uncal" 11;
+IO_LOC "led_d2"   14;
+IO_LOC "led_d1"   15;
+IO_LOC "led_d0"   16;
 IO_LOC "led_err"  13;
 IO_PORT "led_init" IO_TYPE=LVCMOS18 DRIVE=8;
-IO_PORT "led_acq"  IO_TYPE=LVCMOS18 DRIVE=8;
+IO_PORT "led_uncal" IO_TYPE=LVCMOS18 DRIVE=8;
+IO_PORT "led_d2"   IO_TYPE=LVCMOS18 DRIVE=8;
+IO_PORT "led_d1"   IO_TYPE=LVCMOS18 DRIVE=8;
+IO_PORT "led_d0"   IO_TYPE=LVCMOS18 DRIVE=8;
 IO_PORT "led_err"  IO_TYPE=LVCMOS18 DRIVE=8;
 
 // ─── ADS114S08 SPI (piezoresistive) ─────────────────────────────────────────
@@ -45,5 +54,38 @@ IO_PORT "ldc_clkin" IO_TYPE=LVCMOS33 DRIVE=4;
 
 // ─── Single-wire half-duplex Manchester link to SoC ─────────────────────────
 // generic GPIO; pull-up sets the idle (recessive) level during turnaround.
+IO_LOC "uart_tx" 17;
+IO_PORT "uart_tx" IO_TYPE=LVCMOS33 DRIVE=8;
 IO_LOC "line" 42;
 IO_PORT "line" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
+
+// ─── Demo servo (SG90 continuous-rotation) ──────────────────────────────────
+// Right row position 22; GND is position 23 and 3V3 position 24, so the three
+// servo wires land side by side.
+// ─── AD5254 floor rig (wired 2026-09-12) ────────────────────────────────────
+// Pin 32 came from the demo servo, which is removed: its lead alone moved the
+// resting baseline 1600 -> 3400 counts through the ESD diodes, and this rig
+// measures a noise floor.
+//
+// PULL_MODE=NONE because 4.7k pull-ups to 3V3 are fitted externally on all four
+// I2C lines.  The driver in ad5254_i2c.v is true open drain (it releases to
+// 1'bz), and the FPGA's ~50k internal pull-up cannot hold this bus.
+//
+// ⚠ SCL/SDA assignment within each pair is the LOWER pin = SCL.  If the board
+// is soldered the other way round nothing acknowledges; swap these two lines,
+// it is the only place the choice is made.
+IO_LOC "scl_a" 31;
+IO_PORT "scl_a" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8;
+IO_LOC "sda_a" 32;
+IO_PORT "sda_a" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8;
+IO_LOC "scl_b" 48;
+IO_PORT "scl_b" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8;
+IO_LOC "sda_b" 49;
+IO_PORT "sda_b" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=8;
+
+// Write protect, one per chip.  Driven high; low or floating = writes ignored
+// while every transaction still ACKs.
+IO_LOC "wp_a" 74;
+IO_PORT "wp_a" IO_TYPE=LVCMOS33 DRIVE=8;
+IO_LOC "wp_b" 75;
+IO_PORT "wp_b" IO_TYPE=LVCMOS33 DRIVE=8;

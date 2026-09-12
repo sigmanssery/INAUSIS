@@ -9,12 +9,21 @@ add_file -type verilog manchester_rx.v
 add_file -type verilog zscore_flag_multi.v
 add_file -type verilog dog_fir_multi.v
 add_file -type verilog frame_packer.v
+add_file -type verilog slide_detect.v
 add_file -type verilog dsp_chain.v
 add_file -type verilog lut_parser.v
 add_file -type verilog halfduplex_ctrl.v
 add_file -type verilog ttcgs_sys.v
 add_file -type verilog ads114s08_spi.v
 add_file -type verilog ldc1101_spi.v
+add_file -type verilog frame_uart_mirror.v
+add_file -type verilog synth_press.v
+# AD5254 floor rig.  digipot_sweep.v is the ramp generator digipot_rig wraps;
+# both are needed even when DIGIPOT=0, because the generate block still
+# elaborates the module's ports.
+add_file -type verilog ad5254_i2c.v
+add_file -type verilog digipot_sweep.v
+add_file -type verilog digipot_rig.v
 add_file -type verilog ttcgs_board.v
 add_file -type cst inausis.cst
 add_file -type sdc board.sdc

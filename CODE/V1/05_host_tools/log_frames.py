@@ -12,7 +12,22 @@ and the payload is the 51-byte frame that frame_packer.v built:
     6-41   18 dimensions x 2 bytes, big-endian signed
     42-44  18-bit attention mask   (lo8, mid8, {6'b0, hi2})
     45-47  18-bit dead-channel map (same layout)
-    48     status (bit0 = calibrated)
+    48     status:
+             bit0  constant 1 (frame marker; a status of 0 means a parse error)
+             bit1  slide flag
+             bit2  contact flag
+             bit3  uncal   -- 1 = at least one dim still calibrating or retrying
+             bit4  ldc_alive     -- CHIP_ID reads 0xD4 AND data seen within 100 ms
+             bit5  ldc_err   -- 1 = LDC CHIP_ID read back something other than
+                                0xD4.  With bit4 this separates a stopped driver
+                                (alive 0, err 0) from a chip answering wrongly
+                                (alive 0, err 1).  Was ldc_init_done before
+                                2026-09-03; that signal never settles unattached.
+             bit6  ads_init_done
+             bit7  ads_err
+           Bits 7:4 were hard-zero before 2026-09-02. A capture whose status
+           never has any of them set is either from an older bitstream or from
+           a genuinely dead front end -- check_health.py tells them apart.
     49-50  CRC-16-CCITT over bytes 0..48, big-endian
 
 CRC is the 0xFFFF-init, poly 0x1021, MSB-first, no-reflection, no-final-XOR
@@ -128,6 +143,7 @@ def main():
               % (a.cue_period,
                  (" holding %.2f s" % a.cue_hold) if a.cue_hold else "",
                  a.cue_after))
+    bid = {"v": None}
     print("capturing... Ctrl+C to stop")
     try:
         while True:
@@ -160,6 +176,14 @@ def main():
                     n_crc += 1
                     continue
                 ts, dims, mask, dead, st = decode(p)
+                # dim 4 carries the bitstream's BUILD_ID (see dsp_chain.v).  It is
+                # printed once per run because there are three ways to end up
+                # running something other than what was last built: SRAM loses its
+                # image on power loss, RESET reloads from internal flash, and
+                # Gowin's "Verify Failed at 0" is a false alarm in both directions.
+                if bid["v"] is None:
+                    bid["v"] = dims[4] & 0xFFFF
+                    print("bitstream BUILD_ID = 0x%04X" % bid["v"])
                 t = time.time() - t0
                 row = ("%.4f,%d,%s,%d,%d,%d,%d\n"
                        % (t, ts, ",".join(str(v) for v in dims), mask, dead, st,
@@ -191,10 +215,15 @@ def main():
         pass
     finally:
         cue["stop"] = True
-        f.close(); ser.close()
+        # The settling buffer has to be drained BEFORE the file is closed.
+        # Closing first raised "I/O operation on closed file" and threw away the
+        # whole capture whenever the run ended while rows were still pending --
+        # which is every --secs run short enough that the stream never settled.
+        ser.close()
         el = time.time() - t0
         for _, r in pending:
             f.write(r)
+        f.close()
         kept = n_ok - n_stale          # the stale prefix never reached the file
         print("\n\nframes %d in %.1fs (%.0f/s) | badCRC %d | resync %d | dropped %d stale"
               % (kept, el, kept / el if el else 0, n_crc, n_short, n_stale))
