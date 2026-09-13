@@ -24,7 +24,20 @@ REST = 1746            # DIGIPOT_CODE; a presentation is any frame off this
 
 
 def main(path):
-    d = np.genfromtxt(path, delimiter=",", names=True)
+    # genfromtxt parses every column of every row in Python: on a ten-hour
+    # capture (24.8 M rows, 2.2 GB) that is tens of minutes and several GB
+    # of RAM for three columns it actually uses.  Read those with the C
+    # parser when pandas is there, and keep genfromtxt as the fallback so
+    # the script still runs without it.
+    cols = ["d13", "d12", "mask"]
+    try:
+        import pandas as pd
+        df = pd.read_csv(path, usecols=cols,
+                         dtype=dict((c, np.int64) for c in cols))
+        d = dict((c, df[c].to_numpy()) for c in cols)
+        del df
+    except ImportError:
+        d = np.genfromtxt(path, delimiter=",", names=True)
     a = d["d13"].astype(np.int64) & 0xFFFF
     rung = (a >> 11) & 0x1F
     code = a & 0x7FF
@@ -63,7 +76,8 @@ def main(path):
             # is a 256-tap average -- a 371 ms window -- so its response to a
             # 260 ms presentation lands mostly after the code has returned to
             # rest, and a window that stops at `e` scores it as a miss.  The
-            # inter-presentation gap is 690 frames (1.0 s), so 500 ms of run-on
+            # inter-presentation gap is GAP frames -- 2500 (3.6 s) since
+            # 2026-09-12, 690 (1.0 s) before -- so 500 ms of run-on
             # cannot reach the next one.
             m = mask[s:min(e + int(0.5 * FPS), len(mask))]
             # dim3 carries the raw channel through the same adaptive
@@ -86,8 +100,8 @@ def main(path):
     # a fast ramp those answers land after the code is already back at rest, so
     # scoring them as false alarms turned a clean run into 1326 phantom ones
     # (and inflated the rest sd from 7 to 43).  The guard has to outlast the
-    # slowest band: G_sigma3 is 256 taps = 371 ms, so 700 ms is used, which the
-    # 690-frame (1.0 s) gap still leaves room inside.
+    # slowest band: G_sigma3 is 256 taps = 371 ms, so 700 ms is used, which
+    # fits inside the gap at either GAP setting.
     guard = int(0.7 * FPS)
     clear = off.copy()
     for e in ends:
